@@ -6,7 +6,9 @@ import "sebuf/http/annotations.proto";
 
 // Field vocabularies and the decision-window heuristic are documented in
 // docs/panels/drug-pipeline.mdx; comments here are kept short because each one
-// is emitted into the size-budgeted public OpenAPI bundle.
+// is emitted into the size-budgeted public OpenAPI bundle. Query parameters
+// are the exception: tests/generated-api-description-guard.test.mjs requires
+// each one to carry a description.
 message DrugPipelineEntry {
   string nct_id = 1;
   string title = 2;
@@ -21,14 +23,12 @@ message DrugPipelineEntry {
   repeated string conditions = 11;
   string primary_completion_date = 12;
   bool primary_completion_actual = 13;
-  // Estimated month (YYYY-MM), not an announced date.
+  // Estimated (YYYY-MM), not announced.
   string expected_decision_from = 14;
   string expected_decision_to = 15;
-  // Candidate is not yet an approved drug.
   bool novel = 16;
   int32 enrollment = 17;
   string source_url = 18;
-  // Parent of the sponsor; empty when unmapped.
   string parent_company = 19;
   string hq_country = 20;
 }
@@ -53,9 +53,13 @@ message PipelineFacetCount {
 }
 
 message ListDrugPipelineRequest {
+  // Drug type filter.
   string modality = 1 [(sebuf.http.query) = {name: "modality"}];
+  // Therapeutic area filter.
   string therapeutic_area = 2 [(sebuf.http.query) = {name: "therapeutic_area"}];
+  // Only unapproved candidates.
   bool novel_only = 3 [(sebuf.http.query) = {name: "novel_only"}];
+  // Parent company filter.
   string company = 5 [(sebuf.http.query) = {name: "company"}];
   // Default 200, max 500.
   int32 limit = 4 [(sebuf.http.query) = {name: "limit"}];
@@ -63,14 +67,13 @@ message ListDrugPipelineRequest {
 
 message ListDrugPipelineResponse {
   repeated DrugPipelineEntry entries = 1;
-  // Matches before the limit.
   int32 total = 2;
   repeated PipelineFacetCount modality_counts = 3;
   repeated PipelineFacetCount area_counts = 4;
   string generated_at = 5;
   // Dataset unavailable; empty fields are not zero data.
   bool unavailable = 6;
-  // CDER approvals, last 180 days; not filtered.
+  // CDER only; last 180 days.
   repeated DrugApproval approvals = 7;
   bool approvals_unavailable = 8;
   repeated PipelineFacetCount company_counts = 9;

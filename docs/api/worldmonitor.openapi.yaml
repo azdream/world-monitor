@@ -29178,24 +29178,28 @@ paths:
             parameters:
                 - name: modality
                   in: query
+                  description: Drug type filter.
                   required: false
                   example: "example"
                   schema:
                     type: string
                 - name: therapeutic_area
                   in: query
+                  description: Therapeutic area filter.
                   required: false
                   example: "example"
                   schema:
                     type: string
                 - name: novel_only
                   in: query
+                  description: Only unapproved candidates.
                   required: false
                   example: true
                   schema:
                     type: boolean
                 - name: company
                   in: query
+                  description: Parent company filter.
                   required: false
                   example: "example"
                   schema:
@@ -60238,12 +60242,16 @@ components:
             properties:
                 modality:
                     type: string
+                    description: Drug type filter.
                 therapeuticArea:
                     type: string
+                    description: Therapeutic area filter.
                 novelOnly:
                     type: boolean
+                    description: Only unapproved candidates.
                 company:
                     type: string
+                    description: Parent company filter.
                 limit:
                     type: integer
                     format: int32
@@ -60258,7 +60266,6 @@ components:
                 total:
                     type: integer
                     format: int32
-                    description: Matches before the limit.
                 modalityCounts:
                     type: array
                     items:
@@ -60317,12 +60324,11 @@ components:
                     type: boolean
                 expectedDecisionFrom:
                     type: string
-                    description: Estimated month (YYYY-MM), not an announced date.
+                    description: Estimated (YYYY-MM), not announced.
                 expectedDecisionTo:
                     type: string
                 novel:
                     type: boolean
-                    description: Candidate is not yet an approved drug.
                 enrollment:
                     type: integer
                     format: int32
@@ -60330,13 +60336,14 @@ components:
                     type: string
                 parentCompany:
                     type: string
-                    description: Parent of the sponsor; empty when unmapped.
                 hqCountry:
                     type: string
             description: |-
                 Field vocabularies and the decision-window heuristic are documented in
                  docs/panels/drug-pipeline.mdx; comments here are kept short because each one
-                 is emitted into the size-budgeted public OpenAPI bundle.
+                 is emitted into the size-budgeted public OpenAPI bundle. Query parameters
+                 are the exception: tests/generated-api-description-guard.test.mjs requires
+                 each one to carry a description.
         worldmonitor_pharma_v1_PipelineFacetCount:
             type: object
             properties:
