@@ -4,8 +4,8 @@
  *
  * Source toggles apply to `ctx.disabledSources` on click — no draft/Save step
  * like panels — but nothing subscribed to that write, so a change first reached
- * the dashboard at RefreshScheduler's `news` tick (REFRESH_INTERVALS.feeds, 20
- * minutes) or on reload. `onSourcesChanged` is that subscription, and this file
+ * the dashboard at RefreshScheduler's `news` tick (REFRESH_INTERVALS.feeds)
+ * or on reload. `onSourcesChanged` is that subscription, and this file
  * pins the two halves of when it fires:
  *
  *   (a) toggled + closed              → fires exactly once, after teardown;
@@ -71,6 +71,7 @@ vi.mock('@/services/entitlements', () => ({
   getEntitlementState: () => entitlementState,
   getEntitlementVerificationStatus: () => 'ready',
   hasFeature: () => true,
+  hasEmbedAccessForAccount: () => true,
   isEntitled: () => true,
   onEntitlementChange: () => () => {},
   onEntitlementVerificationChange: () => () => {},
@@ -85,7 +86,7 @@ vi.mock('@/services/widget-store', () => ({
 }));
 
 vi.mock('@/services/preferences-content', () => ({
-  renderPreferences: () => ({
+  renderPreferenceSection: () => ({
     html: '',
     attach: () => () => {},
   }),
@@ -122,6 +123,7 @@ vi.mock('@/config/variant', () => ({
 
 vi.mock('@/services/billing', () => ({
   getSubscription: () => null,
+  isSubscriptionLoaded: () => true,
   onSubscriptionChange: () => () => {},
   openBillingPortal: async () => ({ outcome: 'no-customer' as const }),
   prereserveBillingPortalTab: () => null,
@@ -135,7 +137,10 @@ vi.mock('@/services/billing', () => ({
   removeBusinessSeat: async () => ({ status: 'removed' as const }),
 }));
 
-vi.mock('@/services/billing-state', () => ({
+// Partial so the real status-tone helpers stay available: a full stub goes
+// stale the moment billing-state gains an export the panel renders (#7315).
+vi.mock('@/services/billing-state', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/billing-state')>()),
   deriveBillingUxState: () => 'active',
   getReactivationHref: () => '/pro#pricing',
 }));

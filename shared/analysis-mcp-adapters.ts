@@ -44,6 +44,9 @@ import {
   nonEmptyString,
   usableCoord,
 } from './analysis-adapter-guards';
+import {
+  hasRedistributableProviderAttribution,
+} from './provider-redistribution';
 
 // ---------------------------------------------------------------------------
 // Shared primitives
@@ -72,6 +75,11 @@ export interface GeoAdapterOptions {
   now?: number;
   /** Events older than this drop out; defaults to the core's 24h window. */
   windowMs?: number;
+}
+
+function flightProviderAttribution(record: Record<string, unknown>): unknown {
+  const sourceMeta = asRecord(record.sourceMeta);
+  return nonEmptyString(sourceMeta?.source) || nonEmptyString(record.source);
 }
 
 // ---------------------------------------------------------------------------
@@ -130,7 +138,10 @@ export function unrestEventsToGeoEvents(payload: unknown, options: GeoAdapterOpt
 /** `military:flights:v1` -> military-flight events. */
 export function militaryFlightsToGeoEvents(payload: unknown, options: GeoAdapterOptions = {}): GeoEventInput[] {
   return toGeoEvents(
-    arrayField(payload, 'flights'),
+    arrayField(payload, 'flights').filter((flight) => {
+      const record = asRecord(flight);
+      return record !== null && hasRedistributableProviderAttribution(flightProviderAttribution(record));
+    }),
     (record) => ({ lat: finiteNumber(record.lat), lon: finiteNumber(record.lon) }),
     (record) => finiteNumber(record.lastSeenMs),
     finiteNumber(asRecord(payload)?.fetchedAt),
@@ -336,7 +347,7 @@ export function crossSourceSignalsToSignalSummary(
 }
 
 /**
- * `risk:scores:sebuf:v8` -> the `MilitarySurgeCiiLookup` contract, also used as
+ * `risk:scores:sebuf:v14` -> the `MilitarySurgeCiiLookup` contract, also used as
  * per-focal-point CII context. `region` on a CII row is the ISO-2 country code.
  */
 export function riskScoresToCiiLookup(payload: unknown): (countryCode: string) => number | null {
@@ -430,7 +441,19 @@ export function submarineCablesToCableInputs(payload: unknown): CableInput[] {
       });
     }
 
+    // Route geometry ([lon, lat] pairs) is what chokepoint crossing detection
+    // reads; without it a cable that passes a strait without landing nearby
+    // (Bab el-Mandeb, Suez) is never counted as crossing it.
+    const points: [number, number][] = [];
+    for (const entry of asArray(record.points)) {
+      if (!Array.isArray(entry)) continue;
+      const lon = finiteNumber(entry[0]);
+      const lat = finiteNumber(entry[1]);
+      if (lon !== null && lat !== null) points.push([lon, lat]);
+    }
+
     const cable: CableInput = { id, name, countriesServed, landingPoints };
+    if (points.length > 0) cable.points = points;
     const rfsYear = finiteNumber(record.rfsYear);
     if (rfsYear !== null) cable.rfsYear = rfsYear;
     const owners = asArray(record.owners).map((owner) => nonEmptyString(owner)).filter(Boolean);
@@ -462,6 +485,7 @@ export function militaryFlightsToSurgeInputs(payload: unknown): MilitaryFlightIn
   for (const raw of arrayField(payload, 'flights')) {
     const record = asRecord(raw);
     if (!record) continue;
+    if (!hasRedistributableProviderAttribution(flightProviderAttribution(record))) continue;
     const lat = finiteNumber(record.lat);
     const lon = finiteNumber(record.lon);
     if (!usableCoord(lat, lon) || lon === null) continue;
@@ -496,6 +520,7 @@ export function militaryFlightsToSurgeInputs(payload: unknown): MilitaryFlightIn
  */
 export function theaterPostureVesselCounts(payload: unknown): Map<string, number> {
   const counts = new Map<string, number>();
+  if (!hasRedistributableProviderAttribution(asRecord(payload)?.provider)) return counts;
 
   for (const raw of arrayField(payload, 'theaters')) {
     const record = asRecord(raw);
@@ -535,6 +560,7 @@ export function surgeHistoryToActivityHistory(payload: unknown): Map<string, The
   const runs = arrayField(payload, 'history')
     .map((raw) => asRecord(raw))
     .filter((run): run is Record<string, unknown> => run !== null)
+    .filter((run) => hasRedistributableProviderAttribution(run.sourceVersion))
     .map((run) => ({ run, timestamp: finiteNumber(run.assessedAt) }))
     .filter((entry): entry is { run: Record<string, unknown>; timestamp: number } => entry.timestamp !== null)
     // The core slices the tail (`-6`, `-12..-6`) to compare recent vs older,

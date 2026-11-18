@@ -31,15 +31,26 @@ export function normalizeBriefSourceUrl(value: unknown): string {
   return normalizeInsightSourceUrl(value);
 }
 
-export function normalizeBriefSource(candidate: BriefSourceCandidate): BriefSource | null {
-  return normalizeInsightSource(candidate);
-}
-
 export function collectBriefSources(
   candidates: BriefSourceCandidate[],
   maxSources = DEFAULT_MAX_SOURCES,
 ): BriefSource[] {
   return collectInsightSources(candidates, maxSources);
+}
+
+/**
+ * Preserve the producer's positional citation slots. The seeded World Brief
+ * assigns source n to citation [n], including an empty-url fallback when a
+ * story has no usable link. Citation rendering must retain those slots even
+ * when the footer later filters sources for display.
+ */
+export function collectBriefCitationSources(
+  candidates: BriefSourceCandidate[],
+  maxSources = DEFAULT_MAX_SOURCES,
+): BriefSource[] {
+  return candidates.slice(0, Math.max(0, maxSources)).map((candidate) =>
+    normalizeInsightSource(candidate, { allowEmptyUrl: true }) ?? { title: '', source: '', url: '' },
+  );
 }
 
 export function normalizeCachedBriefSources(

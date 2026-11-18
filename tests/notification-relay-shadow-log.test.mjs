@@ -23,7 +23,7 @@ const relaySrc = readFileSync(
 );
 
 function extractProcessEvent(src) {
-  const idx = src.indexOf('async function processEvent(');
+  const idx = src.indexOf('async function processEventDelivery(');
   assert.ok(idx !== -1, 'processEvent not found in notification-relay.cjs');
   const openIdx = src.indexOf('{', idx);
   let depth = 1;
@@ -82,5 +82,33 @@ describe('shadow-log key version', () => {
     assert.match(fn, /corroborationCount:/, 'record must include corroborationCount');
     assert.match(fn, /variant:/, 'record must include variant');
     assert.match(fn, /source:/, 'record must include source');
+  });
+});
+
+describe('semantic alert matching', () => {
+  it('logs the nearest distinct anchor without altering either headline or returning a delivery decision', async t => {
+    const { observeSemanticMatch } = await import('../scripts/lib/news-alert-coverage.mjs');
+    const at = Date.now();
+    const title = 'City council approves bridge repairs';
+    const event = { eventType: 'rss_alert', variant: 'full', severity: 'critical', publishedAt: at, payload: { title, importanceScore: 83 } };
+    const original = structuredClone(event);
+    const logs = t.mock.method(console, 'info', () => {});
+    const pipeline = async commands => {
+      assert.deepEqual(commands[1], ['ZREVRANGEBYSCORE', 'shadow:news-alert-anchors:v1:full', at, `(${at - 86_400_000}`, 'LIMIT', 0, 64]);
+      return [{ result: 0 }, { result: [title, 'City votes to repair crossing', 'Unrelated weather report'] }, { result: 1 }];
+    };
+    const embed = async titles => {
+      assert.equal(titles.length, 3);
+      return [[1, 0], [1, 0], [0, 1]];
+    };
+    assert.equal(await observeSemanticMatch(event, pipeline, embed), undefined);
+    const record = JSON.parse(logs.mock.calls[0].arguments[1]);
+    assert.equal(record.suggestedMatch, true);
+    assert.notEqual(record.anchor, record.id);
+    assert.equal(record.candidates, 2);
+    assert.deepEqual(event, original);
+    const forbidden = () => assert.fail('ineligible event entered shadow pipeline');
+    await observeSemanticMatch({ ...event, severity: 'high' }, forbidden, forbidden);
+    await observeSemanticMatch({ ...event, userId: 'user' }, forbidden, forbidden);
   });
 });

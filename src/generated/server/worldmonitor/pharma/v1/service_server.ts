@@ -15,6 +15,8 @@ export interface ListDrugPipelineResponse {
   areaCounts: PipelineFacetCount[];
   generatedAt: string;
   unavailable: boolean;
+  approvals: DrugApproval[];
+  approvalsUnavailable: boolean;
 }
 
 export interface DrugPipelineEntry {
@@ -41,16 +43,6 @@ export interface DrugPipelineEntry {
 export interface PipelineFacetCount {
   key: string;
   count: number;
-}
-
-export interface ListDrugApprovalsRequest {
-}
-
-export interface ListDrugApprovalsResponse {
-  approvals: DrugApproval[];
-  total: number;
-  generatedAt: string;
-  unavailable: boolean;
 }
 
 export interface DrugApproval {
@@ -112,7 +104,6 @@ export interface RouteDescriptor {
 
 export interface PharmaServiceHandler {
   listDrugPipeline(ctx: ServerContext, req: ListDrugPipelineRequest): Promise<ListDrugPipelineResponse>;
-  listDrugApprovals(ctx: ServerContext, req: ListDrugApprovalsRequest): Promise<ListDrugApprovalsResponse>;
 }
 
 export function createPharmaServiceRoutes(
@@ -162,44 +153,7 @@ export function createPharmaServiceRoutes(
           if (options?.onError) {
             return options.onError(err, req);
           }
-          const message = err instanceof Error ? err.message : String(err);
-          return new Response(JSON.stringify({ message }), {
-            status: 500,
-            headers: { "Content-Type": "application/json" },
-          });
-        }
-      },
-    },
-    {
-      method: "GET",
-      path: "/api/pharma/v1/list-drug-approvals",
-      handler: async (req: Request): Promise<Response> => {
-        try {
-          const pathParams: Record<string, string> = {};
-          const body = {} as ListDrugApprovalsRequest;
-
-          const ctx: ServerContext = {
-            request: req,
-            pathParams,
-            headers: Object.fromEntries(req.headers.entries()),
-          };
-
-          const result = await handler.listDrugApprovals(ctx, body);
-          return new Response(JSON.stringify(result as ListDrugApprovalsResponse), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          });
-        } catch (err: unknown) {
-          if (err instanceof ValidationError) {
-            return new Response(JSON.stringify({ violations: err.violations }), {
-              status: 400,
-              headers: { "Content-Type": "application/json" },
-            });
-          }
-          if (options?.onError) {
-            return options.onError(err, req);
-          }
-          const message = err instanceof Error ? err.message : String(err);
+          const message = "Internal server error";
           return new Response(JSON.stringify({ message }), {
             status: 500,
             headers: { "Content-Type": "application/json" },

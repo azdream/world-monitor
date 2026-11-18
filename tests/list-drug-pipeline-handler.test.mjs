@@ -7,7 +7,6 @@ import { describe, it, before, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 
 let listDrugPipeline;
-let listDrugApprovals;
 const cacheStore = new Map();
 const REDIS_KEY = 'pharma:drug-pipeline:v1';
 
@@ -44,7 +43,6 @@ before(async () => {
   });
 
   ({ listDrugPipeline } = await import('../server/worldmonitor/pharma/v1/list-drug-pipeline.ts'));
-  ({ listDrugApprovals } = await import('../server/worldmonitor/pharma/v1/list-drug-approvals.ts'));
 });
 
 beforeEach(() => {
@@ -112,24 +110,34 @@ describe('listDrugPipeline', () => {
   });
 });
 
-describe('listDrugApprovals', () => {
-  it('returns seeded approvals', async () => {
+describe('listDrugPipeline approvals', () => {
+  it('returns seeded approvals alongside the trials', async () => {
     cacheStore.set(REDIS_KEY, SEED);
-    const resp = await listDrugApprovals({}, {});
-    assert.equal(resp.unavailable, false);
-    assert.equal(resp.total, 1);
+    const resp = await listDrugPipeline({}, req());
+    assert.equal(resp.approvalsUnavailable, false);
+    assert.equal(resp.approvals.length, 1);
     assert.equal(resp.approvals[0].brandName, 'PIMJETMI');
     assert.equal(resp.approvals[0].route, '');
   });
 
-  it('reports unavailable when the seed ran without openFDA', async () => {
-    cacheStore.set(REDIS_KEY, { ...SEED, approvals: [], approvalsUnavailable: true });
-    const resp = await listDrugApprovals({}, {});
-    assert.equal(resp.unavailable, true);
+  it('does not filter approvals by the trial filters', async () => {
+    cacheStore.set(REDIS_KEY, SEED);
+    const resp = await listDrugPipeline({}, req({ modality: 'adc', novelOnly: true }));
+    assert.equal(resp.approvals.length, 1);
   });
 
-  it('reports unavailable when the seed key is missing', async () => {
-    const resp = await listDrugApprovals({}, {});
+  it('flags approvals unavailable when the seed ran without openFDA, while trials still serve', async () => {
+    cacheStore.set(REDIS_KEY, { ...SEED, approvals: [], approvalsUnavailable: true });
+    const resp = await listDrugPipeline({}, req());
+    assert.equal(resp.unavailable, false);
+    assert.equal(resp.total, 3);
+    assert.equal(resp.approvalsUnavailable, true);
+    assert.deepEqual(resp.approvals, []);
+  });
+
+  it('flags approvals unavailable when the whole seed key is missing', async () => {
+    const resp = await listDrugPipeline({}, req());
     assert.equal(resp.unavailable, true);
+    assert.equal(resp.approvalsUnavailable, true);
   });
 });

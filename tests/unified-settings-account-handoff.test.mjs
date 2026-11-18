@@ -54,6 +54,7 @@ describe('UnifiedSettings account handoff', () => {
     const Harness = transpileHarness(
       [
         extractMethod(settingsSource, 'private handleAccountIdentityChange('),
+        extractMethod(settingsSource, 'private closeDeletionDialog('),
         extractMethod(settingsSource, 'private captureAccountRequest('),
         extractMethod(settingsSource, 'private isAccountRequestCurrent('),
         extractMethod(settingsSource, 'private async loadApiKeys('),
@@ -73,6 +74,10 @@ describe('UnifiedSettings account handoff', () => {
     instance.apiKeysLoading = false;
     instance.apiKeysError = 'A error';
     instance.newlyCreatedKey = 'wm_a_plaintext';
+    instance.embedKeys = [{ id: 'embed-key-a' }];
+    instance.embedKeysLoading = true;
+    instance.embedKeysError = 'A embed error';
+    instance.newlyCreatedEmbedKey = 'wme_a_plaintext';
     instance.planLimitNotices = [{ _id: 'notice-a' }];
     instance.planLimitNoticesLoading = true;
     instance.mcpClients = [{ id: 'client-a' }];
@@ -85,8 +90,14 @@ describe('UnifiedSettings account handoff', () => {
         seatsReset += 1;
       },
     };
+    let enterpriseSeatsReset = 0;
+    instance.enterpriseSeatsSection = {
+      resetForAccountChange: () => {
+        enterpriseSeatsReset += 1;
+      },
+    };
     instance.overlay = { classList: { contains: () => true } };
-    instance.render = (loadAccountData) => renders.push(loadAccountData);
+    instance.rebuild = (runEnter) => renders.push(runEnter);
     let listRenders = 0;
     instance.renderApiKeysList = () => {
       listRenders += 1;
@@ -105,6 +116,10 @@ describe('UnifiedSettings account handoff', () => {
     assert.equal(instance.apiKeysLoading, false);
     assert.equal(instance.apiKeysError, '');
     assert.equal(instance.newlyCreatedKey, null);
+    assert.deepEqual(instance.embedKeys, []);
+    assert.equal(instance.embedKeysLoading, false);
+    assert.equal(instance.embedKeysError, '');
+    assert.equal(instance.newlyCreatedEmbedKey, null, 'a wme_ plaintext must never survive an account handoff');
     assert.deepEqual(instance.planLimitNotices, []);
     assert.equal(instance.planLimitNoticesLoading, false);
     assert.deepEqual(instance.mcpClients, []);
@@ -112,7 +127,8 @@ describe('UnifiedSettings account handoff', () => {
     assert.equal(instance.mcpClientsError, '');
     assert.equal(instance.mcpQuota, null);
     assert.equal(seatsReset, 1);
-    assert.deepEqual(renders, [false], 'the synchronous rerender must suppress account loads');
+    assert.equal(enterpriseSeatsReset, 1, 'account B must not see account A\'s Enterprise roster');
+    assert.deepEqual(renders, [false], 'the synchronous rebuild must not run page entry loads');
     assert.equal(listRenders, 1, 'A settlement must not render after B clears the surface');
     assert.equal(instance.isAccountRequestCurrent(requestA), false);
   });
@@ -124,6 +140,9 @@ describe('UnifiedSettings account handoff', () => {
       'loadApiKeys',
       'handleCreateApiKey',
       'handleRevokeApiKey',
+      'loadEmbedKeys',
+      'handleCreateEmbedKey',
+      'handleRevokeEmbedKey',
       'loadMcpClients',
       'refreshMcpQuota',
       'handleRevokeMcpClient',

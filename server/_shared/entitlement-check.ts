@@ -1,3 +1,4 @@
+import { hasCurrentEntitlementCoverage } from './entitlement-coverage.js';
 /**
  * Entitlement enforcement middleware for the Vercel API gateway.
  *
@@ -13,10 +14,12 @@
  * A lookup that was attempted but produced no answer — Redis/Convex failure,
  * Convex 5xx, or a Convex 4xx that means our own credential is wrong — returns a
  * verificationUnavailable marker so callers answer with a retryable 503 instead
- * of a misleading hard denial. A null means either that no lookup was attempted
- * (backend unconfigured) or that Convex confirmed the user has no entitlement.
- * The user-key gateway fails closed on null when the backend is configured and
- * retains a logged fail-open exception only when lookup is wholly unconfigured.
+ * of a misleading hard denial. A null from getEntitlements means either that no
+ * lookup was attempted (backend unconfigured) or that Convex confirmed the user
+ * has no entitlement. wm_ user-key gateway traffic fails closed on null in both
+ * cases: callers get a retryable 503 with code
+ * entitlement_verification_unavailable, including when the entitlement backend
+ * is wholly unconfigured.
  *
  * classifyBillingVerification() is the single decision point for that denial;
  * getBillingVerificationDenial() renders it as JSON, and the HTML / OAuth-grant
@@ -25,7 +28,7 @@
  * a backend outage costs one lookup per user per window, not one per request.
  */
 
-import { getCachedJson, setCachedJson } from './redis';
+import { getCachedJson, setCachedJson } from './redis.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -43,6 +46,7 @@ export interface CachedEntitlements {
   planKey: string;
   features: {
     tier: number;
+    historyDays?: number;
     apiAccess: boolean;
     apiRateLimit: number;
     maxDashboards: number;
@@ -75,6 +79,38 @@ export interface CachedEntitlements {
      */
     dataExport?: boolean;
     /**
+     * Partner-embed key issuance (`wme_…`). Mirrors the catalog field so the
+     * edge can read what the Convex read-time merge already puts on the wire;
+     * without it a caller cannot reach the value without a type error, and
+     * `shared/embed-access.ts` would silently see `undefined`. Like
+     * `mcpAccess` and unlike `dataExport`, `undefined` is **fail-CLOSED** —
+     * embedding is a publishable credential, so a stale row must not mint one.
+     */
+    embedAccess?: boolean;
+    /**
+     * Desktop-key issuance and admission (plan 2026-10-25-001). Mirrors the
+     * catalog field the Convex read-time merge puts on the wire; like
+     * `embedAccess`, `undefined` is **fail-CLOSED** — the shared predicate in
+     * `shared/desktop-key-access.js` reads it and treats absence as false.
+     */
+    desktopKeyAccess?: boolean;
+    /** Most active desktop keys one account may hold (R5); `0` without access. */
+    maxDesktopKeys?: number;
+    /**
+     * Dashboard focus (#10453). Mirrors the catalog field the Convex read-time
+     * merge puts on the wire. Nothing at the edge gates on it — the shared
+     * focus is enforced in `convex/teamDashboards.ts` — so it adds no cache
+     * shape check. `undefined` is fail-CLOSED, as in `shared/tab-focus-access.ts`.
+     */
+    tabFocus?: boolean;
+    /**
+     * Travel risk assessment drafts (#10451), read by the MCP pre-check for
+     * `prepare_travel_risk_assessment`. `undefined` is **fail-CLOSED** at every
+     * tier. The cache-shape gate below checks it only for a read that opts in
+     * (`requireTravelRiskShape`), so other gates keep serving older entries.
+     */
+    travelRiskAssessment?: boolean;
+    /**
      * Catalog plan limits, mirrored verbatim from `PlanFeatures.planLimits`
      * (convex/config/productCatalog.ts). Optional because legacy rows predate
      * it and because the Convex read path only merges what the catalog holds.
@@ -82,16 +118,45 @@ export interface CachedEntitlements {
      * `planLimits` altogether) means unknown, and consumers resolve unknown
      * toward cost protection — never toward the higher allowance. The MCP
      * daily quota (plan 2026-07-25-001 U3) and dashboard-AI quota are consumers.
+     *
+     * `mcpCallsPerDay` also carries the catalog's `SHARED_API_BUDGET` marker on
+     * the API tiers, so it is not a plain number: mirroring it as `number | null`
+     * made the value the API tiers actually ship an impossible one here.
      */
     planLimits?: {
       apiRequestsPerDay?: number | null;
       apiBurstRequestsPerMinute?: number | null;
-      mcpCallsPerDay?: number | null;
+      mcpCallsPerDay?: number | null | 'shared-api-budget';
       mcpBurstRequestsPerMinute?: number | null;
       dashboardAiCallsPerDay?: number | null;
+      /**
+       * Per-account desktop-key limits (KTD6). `0` on plans that sell no
+       * desktop keys; consumers fall back to the catalog constants for an
+       * owner admitted through `apiAccess` (R8), never to "unlimited".
+       */
+      desktopKeyRequestsPerDay?: number;
+      desktopKeyBurstPerMinute?: number;
     };
   };
   validUntil: number;
+  /**
+   * Enterprise contract account (convex/enterpriseAccounts.ts), present only
+   * while the user is an active member of a LIVE contract — whichever source
+   * won the entitlement recompute. Its members share these pooled limits.
+   * Absent for everyone else; consumers must not infer membership from
+   * `planKey === 'enterprise'` (a comp can produce that without an account).
+   */
+  account?: {
+    id: string;
+    /** Pooled REST requests per UTC day across all members. */
+    dailyAllowance: number;
+    /** Pooled requests per minute across all members. */
+    perMinuteBurst: number;
+    /** Multiple of the allowance at which a hard stop trips (default 5). */
+    breakerMultiple: number;
+    monthlyInputTokens: number;
+    monthlyOutputTokens: number;
+  };
   billingStatus?: BillingVerificationStatus;
   retryAfterSeconds?: number;
   renewalVerificationFreshness?: {
@@ -111,9 +176,8 @@ export interface CachedEntitlements {
   // or visible to another isolate).
   //
   // A null return therefore means one of exactly two things: the backend is
-  // unconfigured so no lookup was attempted (server/gateway.ts detects that
-  // with isEntitlementBackendConfigured() and keeps its wm_-key fail-open
-  // exception), or Convex answered and this user has no entitlement row — a
+  // unconfigured so no lookup was attempted, or Convex answered and this user
+  // has no entitlement row — a
   // confirmed free account, which is the one state that may honestly upsell.
   verificationUnavailable?: true;
 }
@@ -145,18 +209,28 @@ export interface EntitlementCheckOptions {
  * 403'd real Pro subscribers calling via Clerk session (no tester key).
  */
 const ENDPOINT_ENTITLEMENTS: Record<string, number> = {
+  // Orbital Watch REST: passes and images for any point, and per-country
+  // watched-site evidence. The in-app lookup stays free; the API is Pro.
+  '/api/orbital/v1/get-point-passes': 1,
+  '/api/orbital/v1/get-country-imagery-evidence': 1,
   '/api/forecast/v1/trigger-simulation': 1,
   '/api/intelligence/v1/classify-event': 1,
+  // deduct-situation is a Pro panel (DeductionPanel premium: 'locked') and in
+  // PREMIUM_RPC_PATHS, but it is also a direct-LLM quota route. The gateway
+  // treats a resolved Clerk session as authenticated for quota routes, which
+  // skipped the legacy Pro bearer gate and let any signed-in free account
+  // spend LLM budget here. The tier entry makes the Pro check explicit.
+  '/api/intelligence/v1/deduct-situation': 1,
   '/api/intelligence/v1/get-country-intel-brief': 1,
   '/api/intelligence/v1/search-intel-history': 1,
   '/api/intelligence/v1/get-intel-timeline': 1,
   '/api/intelligence/v1/get-similar-events': 1,
   '/api/market/v1/analyze-stock': 1,
   '/api/market/v1/get-stock-analysis-history': 1,
+  '/api/market/v1/get-insider-transactions': 1,
   '/api/market/v1/backtest-stock': 1,
   '/api/market/v1/list-stored-stock-backtests': 1,
   '/api/economic/v1/list-global-tenders': 1,
-  '/api/sanctions/v1/list-sanctions-pressure': 1,
   '/api/scenario/v1/run-scenario': 1,
   '/api/scenario/v1/get-scenario-status': 1,
   '/api/supply-chain/v1/get-country-chokepoint-index': 1,
@@ -169,14 +243,43 @@ const ENDPOINT_ENTITLEMENTS: Record<string, number> = {
   '/api/supply-chain/v1/get-sector-dependency': 1,
   '/api/trade/v1/list-comtrade-flows': 1,
   '/api/trade/v1/get-tariff-trends': 1,
+  '/api/trade/v1/get-bilateral-tariff': 1,
+  '/api/trade/v1/get-us-import-duty': 1,
   '/api/resilience/v1/get-food-stocks': 1,
+  '/api/resilience/v1/get-demographics-capability': 1,
+  '/api/resilience/v1/get-resilience-indicators': 1,
+  // The five-factor scorecard (food, energy, demographics, technology, defense
+  // bands) went free (#9742): a calm per-country capability check should not
+  // sit behind Pro. Its sibling resilience routes above stay gated.
+  // Physical-vs-paper metals (#6436 series, #6448 index), mineral production
+  // concentration (#6439), arms-supplier dependency (#6438) and commodity
+  // supply vulnerability (#6449). Each shipped ungated because the issues
+  // scoped ingestion + exposure and never named an access tier; the audit that
+  // produced this block found all seven serving full payloads to an anonymous
+  // wms_ session. They belong beside their siblings above: the same seeded
+  // derived-analytics product the resilience routes sell.
+  '/api/market/v1/get-physical-premiums': 1,
+  '/api/market/v1/get-physical-divergence-index': 1,
+  '/api/supply-chain/v1/get-mineral-production': 1,
+  '/api/military/v1/get-defense-industrial-base': 1,
+  '/api/supply-chain/v1/get-country-vulnerabilities': 1,
+  '/api/supply-chain/v1/get-chokepoint-dependencies': 1,
+  '/api/supply-chain/v1/list-vulnerability-rankings': 1,
+  '/api/news/v1/list-media-perspective': 1,
+  '/api/news/v1/list-news-pool': 1,
+  // Cmd+K headline search over 7 days; the 24-hour sibling stays free.
+  '/api/news/v1/search-headline-archive': 1,
+  // Account-private history of delivered realtime alerts (dashboard search).
+  // Tier-gated so the gateway resolves the session and stamps the trusted
+  // user id the handler reads; an anonymous or keyless caller never reaches it.
+  '/api/news/v1/list-sent-alerts': 1,
 };
 
 const CONVEX_INTERNAL_ENTITLEMENTS_PATH = '/api/internal-entitlements';
 let _didWarnMissingConvexSharedSecret = false;
 let _didWarnMissingConvexSiteUrl = false;
 
-function getConvexSharedSecret(): string {
+export function getConvexSharedSecret(): string {
   const secret = process.env.CONVEX_SERVER_SHARED_SECRET ?? '';
   if (!secret && !_didWarnMissingConvexSharedSecret) {
     _didWarnMissingConvexSharedSecret = true;
@@ -191,7 +294,7 @@ function getConvexSharedSecret(): string {
  * fallback with no signal from this module. The warning keeps that deployment
  * defect visible alongside the gateway's explicit unconfigured-backend log.
  */
-function getConvexSiteUrl(): string {
+export function getConvexSiteUrl(): string {
   const siteUrl = process.env.CONVEX_SITE_URL ?? '';
   if (!siteUrl && !_didWarnMissingConvexSiteUrl) {
     _didWarnMissingConvexSiteUrl = true;
@@ -300,7 +403,7 @@ export function __negativeCacheSizeForTests(): number {
 // Environment-aware Redis key prefix (P2-3)
 // ---------------------------------------------------------------------------
 
-const ENV_PREFIX = process.env.DODO_PAYMENTS_ENVIRONMENT === 'live_mode' ? 'live' : 'test';
+export const ENV_PREFIX = process.env.DODO_PAYMENTS_ENVIRONMENT === 'live_mode' ? 'live' : 'test';
 
 // Cache TTL: 15 min — short enough that subscription expiry is reflected promptly (P2-5)
 const ENTITLEMENT_CACHE_TTL_SECONDS = 900;
@@ -440,7 +543,32 @@ export const TIER_GATED_PATHS: ReadonlySet<string> = new Set(Object.keys(ENDPOIN
  * Uses request coalescing to prevent cache stampede: concurrent requests for
  * the same userId share a single in-flight promise.
  */
-export async function getEntitlements(userId: string): Promise<CachedEntitlements | null> {
+export interface GetEntitlementsOptions {
+  /**
+   * Plan 2026-10-25-001: the caller is deciding a desktop-key question. A
+   * cached entry written before the catalog carried `desktopKeyAccess` (a
+   * current tier>=1 row with the field absent) is then a cache MISS and is
+   * refetched through Convex, whose read-time merge rewrites it with the flag.
+   * Off by default so the api-access decision — which never reads the field —
+   * keeps serving such entries until they age out; see
+   * `resolveUserKeyEntitlement` in desktop-key-principal.ts for the one place
+   * that turns it on.
+   */
+  requireDesktopKeyShape?: boolean;
+  /**
+   * #10451: the caller is deciding the travel risk assessment question, whose
+   * flag fails closed when absent. A cached entry written before the catalog
+   * carried `travelRiskAssessment` is then refetched through Convex instead of
+   * telling an entitled customer to upgrade until the entry ages out. Only the
+   * MCP pre-check for that one tool turns it on.
+   */
+  requireTravelRiskShape?: boolean;
+}
+
+export async function getEntitlements(
+  userId: string,
+  options: GetEntitlementsOptions = {},
+): Promise<CachedEntitlements | null> {
   // Negative cache first: a transient failure recorded moments ago is reused
   // rather than re-paying the backend's 3s budget. Only the synthesized
   // verificationUnavailable answer is cached here — never a confirmed row and
@@ -453,11 +581,16 @@ export async function getEntitlements(userId: string): Promise<CachedEntitlement
     _unavailableUntil.delete(userId);
   }
 
-  const existing = _inFlight.get(userId);
+  // Coalesced per (user, shape requirement): a desktop-shape read must not be
+  // satisfied by a concurrent ordinary read that could return a legacy entry.
+  let inFlightKey = userId;
+  if (options.requireDesktopKeyShape) inFlightKey += '\u0000desktop-key-shape';
+  if (options.requireTravelRiskShape) inFlightKey += '\u0000travel-risk-shape';
+  const existing = _inFlight.get(inFlightKey);
   if (existing) return existing;
 
-  const promise = _getEntitlementsImpl(userId);
-  _inFlight.set(userId, promise);
+  const promise = _getEntitlementsImpl(userId, options);
+  _inFlight.set(inFlightKey, promise);
   try {
     const result = await promise;
     if (result?.verificationUnavailable) {
@@ -465,8 +598,17 @@ export async function getEntitlements(userId: string): Promise<CachedEntitlement
     }
     return result;
   } finally {
-    _inFlight.delete(userId);
+    _inFlight.delete(inFlightKey);
   }
+}
+
+/**
+ * A cached entry the desktop decision can read: tier 0 rows never qualify for
+ * desktop keys, so only a current tier>=1 entry must carry the flag.
+ */
+function hasDesktopKeyShape(ent: CachedEntitlements): boolean {
+  if (ent.features.tier < 1) return true;
+  return typeof ent.features.desktopKeyAccess === 'boolean';
 }
 
 // Free-shaped deny-side value for transient lookup failures. Grants nothing
@@ -508,17 +650,30 @@ function parseRetryAfterSeconds(header: string | null): number | undefined {
   return Number.isFinite(seconds) && seconds > 0 ? seconds : undefined;
 }
 
-async function _getEntitlementsImpl(userId: string): Promise<CachedEntitlements | null> {
+async function _getEntitlementsImpl(
+  userId: string,
+  options: GetEntitlementsOptions,
+): Promise<CachedEntitlements | null> {
   try {
     // Redis cache check (raw=true: entitlements use user-scoped keys, no deployment prefix)
     const cached = await getCachedJson(`entitlements:${ENV_PREFIX}:${userId}`, true);
 
     if (cached && typeof cached === 'object') {
       const ent = cached as CachedEntitlements;
+      const hasCurrentEmbedAccessShape = typeof ent.features?.embedAccess === 'boolean';
       // Verification markers have their own short Redis TTL. Serve them even
       // though validUntil is expired so cooldown requests stop at Redis instead
-      // of repeating the Convex action/claim chain.
-      if (entitlementMarkerTtlSeconds(ent) !== null) return ent;
+      // of repeating the Convex action/claim chain. A marker can carry a paid
+      // fallback whose validUntil lapses during this TTL; consumers must check
+      // expiry before granting access and retain the marker for denial details.
+      // The cache-shape check must
+      // run first: a pre-embedAccess marker is still an authorization row, and
+      // serving it would bypass the canonical Convex merge below.
+      // The opt-in travel shape applies here too: a marker row written before
+      // `travelRiskAssessment` existed would otherwise admit the account at the
+      // MCP pre-check and then deny the tool as a missing plan feature.
+      const hasRequestedTravelShape = !options.requireTravelRiskShape || typeof ent.features.travelRiskAssessment === 'boolean';
+      if (hasCurrentEmbedAccessShape && hasRequestedTravelShape && entitlementMarkerTtlSeconds(ent) !== null) return ent;
       // Only use cached data if it hasn't expired AND has the post-U10 shape.
       //
       // Legacy cache entries written before plan 2026-05-10-001 U10 lack the
@@ -539,10 +694,33 @@ async function _getEntitlementsImpl(userId: string): Promise<CachedEntitlements 
       // and every paid tier above Pro would silently resolve to the Pro default
       // (Pro Business 2,500 -> 500, API Business 10,000 -> 500). Require the
       // member the same way, so those rows self-heal through Convex instead.
+      // Third instance of the same trap, for `planLimits.mcpCallsPerDay`. An
+      // API-tier entry written before the shared-budget marker carries the old
+      // numeric 1,000/10,000, which satisfies both checks above and resolves
+      // `{allowance: 'mcp'}` — same counter and same ceiling as the correct
+      // `{allowance: 'api', counter: 'mcp'}`, but one unit per call instead of
+      // the per-tool weight, so those callers under-pay until the entry ages
+      // out. No current plan pairs `apiAccess` with a NUMERIC mcpCallsPerDay
+      // (every apiAccess plan, Enterprise included, carries the marker), so
+      // that pairing identifies a pre-marker entry exactly. That includes an
+      // Enterprise entry cached before Enterprise moved onto the marker
+      // (100k REST, a dedicated 25k MCP ceiling).
+      const legacySharedBudgetShape = ent.features.apiAccess === true
+        && typeof ent.features.planLimits?.mcpCallsPerDay === 'number';
+      // Fourth instance, opt-in (plan 2026-10-25-001): a Pro entry written
+      // before `desktopKeyAccess` existed satisfies every check above, and the
+      // desktop-key predicate reads its absence as false — a paying Pro owner's
+      // new desktop key would be denied until the entry aged out. Only the
+      // desktop decision asks for this (`requireDesktopKeyShape`); the
+      // api-access decision never reads the field and keeps the entry.
       if (
         ent.validUntil >= Date.now() &&
         typeof (ent.features as { mcpAccess?: boolean }).mcpAccess === 'boolean' &&
-        ent.features.planLimits?.dashboardAiCallsPerDay !== undefined
+        hasCurrentEmbedAccessShape &&
+        ent.features.planLimits?.dashboardAiCallsPerDay !== undefined &&
+        !legacySharedBudgetShape &&
+        (!options.requireDesktopKeyShape || hasDesktopKeyShape(ent)) &&
+        hasRequestedTravelShape
       ) {
         return ent;
       }
@@ -552,11 +730,8 @@ async function _getEntitlementsImpl(userId: string): Promise<CachedEntitlements 
     // Convex fallback on cache miss or expired cache
     const convexSiteUrl = getConvexSiteUrl();
     const convexSharedSecret = getConvexSharedSecret();
-    // MISCONFIGURATION HAZARD: a deploy missing CONVEX_SITE_URL or
-    // CONVEX_SERVER_SHARED_SECRET returns null for every user on every request.
-    // The gateway recognizes that configuration state and logs before using its
-    // explicit fail-open deploy-defect exception; other entitlement gates remain
-    // fail closed. Warn once per variable here so neither missing value is silent.
+    // Missing configuration cannot resolve a cache miss. Both access gates
+    // fail closed; the getters warn once per missing variable.
     if (!convexSiteUrl || !convexSharedSecret) return null;
 
     const response = await fetch(`${convexSiteUrl}${CONVEX_INTERNAL_ENTITLEMENTS_PATH}`, {
@@ -889,7 +1064,7 @@ export async function checkEntitlementDetailed(
   // only to capabilities above the fallback.
   if (
     ent.features.tier >= requiredTier &&
-    ent.validUntil >= Date.now()
+    hasCurrentEntitlementCoverage(ent)
   ) {
     return { response: null, entitlements: ent };
   }

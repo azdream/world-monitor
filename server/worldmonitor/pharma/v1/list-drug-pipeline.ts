@@ -1,4 +1,5 @@
 import type {
+  DrugApproval,
   DrugPipelineEntry,
   ListDrugPipelineRequest,
   ListDrugPipelineResponse,
@@ -12,6 +13,7 @@ const MAX_LIMIT = 500;
 
 const UNAVAILABLE: ListDrugPipelineResponse = {
   entries: [], total: 0, modalityCounts: [], areaCounts: [], generatedAt: '', unavailable: true,
+  approvals: [], approvalsUnavailable: true,
 };
 
 function countBy(entries: DrugPipelineEntry[], field: 'modality' | 'therapeuticArea'): PipelineFacetCount[] {
@@ -51,6 +53,21 @@ export async function listDrugPipeline(
       sourceUrl: e.nctId ? `https://clinicaltrials.gov/study/${encodeURIComponent(e.nctId)}` : '',
     }));
 
+    // An empty approvals list is only trustworthy when the seed says openFDA answered.
+    const approvalsUnavailable = !Array.isArray(seed.approvals) || seed.approvalsUnavailable === true;
+    const approvals: DrugApproval[] = approvalsUnavailable ? [] : (seed.approvals ?? []).map((a) => ({
+      applicationNumber: a.applicationNumber ?? '',
+      brandName: a.brandName ?? '',
+      genericName: a.genericName ?? '',
+      sponsor: a.sponsor ?? '',
+      approvalDate: a.approvalDate ?? '',
+      applicationType: a.applicationType ?? '',
+      reviewPriority: a.reviewPriority ?? '',
+      newMolecularEntity: a.newMolecularEntity ?? false,
+      modality: a.modality ?? 'other',
+      route: a.route ?? '',
+    }));
+
     const base = req.novelOnly ? all.filter((e) => e.novel) : all;
     const modality = (req.modality ?? '').trim().toLowerCase();
     const area = (req.therapeuticArea ?? '').trim().toLowerCase();
@@ -67,6 +84,8 @@ export async function listDrugPipeline(
       areaCounts: countBy(base, 'therapeuticArea'),
       generatedAt: seed.generatedAt ?? '',
       unavailable: false,
+      approvals,
+      approvalsUnavailable,
     };
   } catch {
     return UNAVAILABLE;

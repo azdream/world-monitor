@@ -36,12 +36,11 @@ Regulators do not publish decision goal dates, and sponsors disclose them only i
 
 ## Data sources
 
-Two RPCs back the panel:
+A single RPC backs both tabs:
 
-- `GET /api/pharma/v1/list-drug-pipeline` — accepts `modality`, `therapeutic_area`, `novel_only`, and `limit` (default 200, max 500).
-- `GET /api/pharma/v1/list-drug-approvals`
+- `GET /api/pharma/v1/list-drug-pipeline` — accepts `modality`, `therapeutic_area`, `novel_only`, and `limit` (default 200, max 500). The response also carries the recent approvals, which the trial filters do not affect.
 
-The seeder (`scripts/seed-drug-pipeline.mjs`) combines three public sources, none of which requires registration:
+The seeder (`scripts/seed-drug-pipeline.mjs`) combines the public sources below, none of which requires registration:
 
 - **ClinicalTrials.gov API v2** — industry-led interventional Phase 3 trials whose primary completion date falls between 12 months ago and 30 months ahead. This is the only hard dependency.
 - **ChEMBL** — molecule type (drug type) and approval status for name matching. If ChEMBL is unavailable, drug type falls back to name stems and the registry's intervention type.

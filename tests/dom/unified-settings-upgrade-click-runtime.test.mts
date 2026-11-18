@@ -21,6 +21,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { initTestI18n } from './helpers/i18n.mts';
 import type { UnifiedSettingsConfig } from '@/components/UnifiedSettings';
 import type { AuthSession } from '@/services/auth-state';
+import type { SubscriptionInfo } from '@/services/billing';
 
 const session: AuthSession = {
   user: { id: 'A', name: 'User A', email: 'a@example.com', role: 'free' },
@@ -29,6 +30,9 @@ const session: AuthSession = {
 
 /** Flipped per case; read lazily by the runtime mock below. */
 let desktopRuntime = false;
+let signedIn = true;
+let billingUxState: 'free' | 'lapsed' = 'free';
+let mockSubscription: SubscriptionInfo | null = null;
 
 const storageValues = new Map<string, string>();
 const storage: Storage = {
@@ -45,9 +49,14 @@ vi.mock('@/services/desktop-runtime', async (importOriginal) => ({
   isDesktopRuntime: () => desktopRuntime,
 }));
 
+vi.mock('@/services/clerk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/clerk')>()),
+  isClerkAuthEnabled: () => true,
+}));
+
 vi.mock('@/services/auth-state', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/auth-state')>()),
-  getAuthState: () => session,
+  getAuthState: () => signedIn ? session : { ...session, user: null },
   subscribeAuthState: () => () => {},
 }));
 
@@ -55,6 +64,7 @@ vi.mock('@/services/entitlements', () => ({
   getEntitlementState: () => null,
   getEntitlementVerificationStatus: () => 'ready',
   hasFeature: () => false,
+  hasEmbedAccessForAccount: () => false,
   // Free tier: the upgrade branch, not the manage-billing branch.
   isEntitled: () => false,
   onEntitlementChange: () => () => {},
@@ -70,7 +80,7 @@ vi.mock('@/services/widget-store', () => ({
 }));
 
 vi.mock('@/services/preferences-content', () => ({
-  renderPreferences: () => ({ html: '', attach: () => () => {} }),
+  renderPreferenceSection: () => ({ html: '', attach: () => () => {} }),
 }));
 
 vi.mock('@/services/notifications-settings', () => ({
@@ -100,7 +110,7 @@ vi.mock('@/config/variant', () => ({
 }));
 
 vi.mock('@/services/billing', () => ({
-  getSubscription: () => null,
+  getSubscription: () => mockSubscription,
   onSubscriptionChange: () => () => {},
   openBillingPortal: async () => ({ outcome: 'no-customer' as const }),
   prereserveBillingPortalTab: () => null,
@@ -114,9 +124,14 @@ vi.mock('@/services/billing', () => ({
   removeBusinessSeat: async () => ({ status: 'removed' as const }),
 }));
 
-vi.mock('@/services/billing-state', () => ({
-  deriveBillingUxState: () => 'free',
-  getReactivationHref: () => '/pro#pricing',
+// Partial so the real status-tone helpers stay available: a full stub goes
+// stale the moment billing-state gains an export the panel renders (#7315).
+vi.mock('@/services/billing-state', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/billing-state')>()),
+  deriveBillingUxState: () => billingUxState,
+  getReactivationHref: (planKey: string | null | undefined) => planKey
+    ? `/pro?wm_reactivate_plan=${planKey}#pricing`
+    : '/pro#pricing',
 }));
 
 vi.mock('@/services/api-keys', () => ({
@@ -136,21 +151,24 @@ vi.mock('@/services/mcp-clients', () => ({
   revokeMcpClient: vi.fn(),
 }));
 
-// Force the web branch down its `.catch(...)` fallback deterministically.
-// Without this the web case asserted nothing: startCheckout would take over
-// and no window.open would ever happen, which the old `.every(...)` check
-// reported as a pass.
-vi.mock('@/services/checkout', () => ({
-  startCheckout: () => Promise.reject(new Error('checkout unavailable in test')),
-}));
+// The CTA opens the /pro plan picker; it must never start a checkout itself.
+const startCheckout = vi.hoisted(() => vi.fn(async () => true));
+vi.mock('@/services/checkout', () => ({ startCheckout }));
 
 const { UnifiedSettings } = await import('@/components/UnifiedSettings');
 
 type SettingsInternals = {
   handleUpgradeClick(): void;
+  overlay: HTMLElement;
 };
 
 const PRO_URL = 'https://worldmonitor.app/pro';
+const PLANS_URL = 'https://worldmonitor.app/pro#pricing';
+const DESKTOP_PLANS_URL = 'https://worldmonitor.app/pro?wm_checkout_handoff=desktop#pricing';
+const RUNTIMES = [
+  ['web', false],
+  ['desktop', true],
+] as const;
 
 let invocations: Array<{ command: string; payload?: Record<string, unknown> }>;
 let settings: InstanceType<typeof UnifiedSettings>;
@@ -177,6 +195,10 @@ beforeEach(() => {
   storageValues.clear();
   vi.stubGlobal('localStorage', storage);
   invocations = [];
+  startCheckout.mockClear();
+  signedIn = true;
+  billingUxState = 'free';
+  mockSubscription = null;
   // The bridge `tauri-bridge.ts` looks for. Present in both cases, so a
   // desktop assertion cannot pass merely because the web case lacked it.
   vi.stubGlobal('__TAURI_INTERNALS__', {
@@ -202,24 +224,68 @@ describe('UnifiedSettings upgrade click (#5911)', () => {
     (settings as unknown as SettingsInternals).handleUpgradeClick();
     await vi.waitFor(() => expect(invocations.length).toBe(1));
 
-    expect(invocations[0]).toEqual({ command: 'open_url', payload: { url: PRO_URL } });
+    expect(invocations[0]).toEqual({ command: 'open_url', payload: { url: DESKTOP_PLANS_URL } });
     expect(openSpy).not.toHaveBeenCalled();
+    expect(startCheckout).not.toHaveBeenCalled();
   });
 
-  it('leaves the web path on window.open and never touches the native bridge', async () => {
+  it('opens the plan picker on the web, not a Pro Monthly checkout', async () => {
     desktopRuntime = false;
     const openSpy = vi.spyOn(window, 'open').mockReturnValue({} as Window);
     settings = new UnifiedSettings(config(false));
 
     (settings as unknown as SettingsInternals).handleUpgradeClick();
-    // The web branch reaches its fallback only after the lazy checkout import
-    // rejects (mocked at module scope above), so wait for the real call.
     await vi.waitFor(() => expect(openSpy).toHaveBeenCalled());
 
-    // Positive assertion on purpose: the earlier `.every(...)` form was
-    // vacuously true on an empty call list, so it passed whether or not the
-    // web branch ran at all.
-    expect(openSpy).toHaveBeenCalledWith(PRO_URL, '_blank');
+    expect(openSpy).toHaveBeenCalledWith(PLANS_URL, '_blank');
+    expect(startCheckout).not.toHaveBeenCalled();
     expect(invocations).toEqual([]);
+  });
+});
+
+describe('UnifiedSettings desktop Plan & billing parity (#6108)', () => {
+  it.each(RUNTIMES)('renders the signed-in account page and canonical fallback plan href on %s', (_runtime, isDesktopApp) => {
+    desktopRuntime = isDesktopApp;
+    settings = new UnifiedSettings(config(isDesktopApp));
+    const internal = settings as unknown as SettingsInternals;
+
+    settings.open('account');
+
+    expect(internal.overlay.querySelector('[data-settings-nav="account"]')).not.toBeNull();
+    expect(internal.overlay.querySelector<HTMLElement>('[data-settings-page="account"]')?.hidden).toBe(false);
+    expect(internal.overlay.querySelector<HTMLAnchorElement>('.upgrade-pro-cta-link')?.href)
+      .toBe(PRO_URL);
+  });
+
+  it.each(RUNTIMES)('renders the canonical reactivation href on %s', (_runtime, isDesktopApp) => {
+    desktopRuntime = isDesktopApp;
+    billingUxState = 'lapsed';
+    mockSubscription = {
+      planKey: 'pro_annual',
+      displayName: 'Pro Annual',
+      status: 'cancelled',
+      currentPeriodEnd: Date.now() - 1_000,
+      renewalVerificationState: null,
+    };
+    settings = new UnifiedSettings(config(isDesktopApp));
+    const internal = settings as unknown as SettingsInternals;
+
+    settings.open('account');
+
+    expect(internal.overlay.querySelector<HTMLAnchorElement>('.upgrade-pro-cta-link')?.href)
+      .toBe(`${PRO_URL}?wm_reactivate_plan=pro_annual#pricing`);
+  });
+
+  it('offers sign-in instead of the account page for a signed-out desktop session', () => {
+    desktopRuntime = true;
+    signedIn = false;
+    settings = new UnifiedSettings(config(true));
+    const internal = settings as unknown as SettingsInternals;
+
+    settings.open('account');
+
+    expect(internal.overlay.querySelector('[data-settings-nav="account"]')).toBeNull();
+    expect(internal.overlay.querySelector('[data-settings-page="account"]')).toBeNull();
+    expect(internal.overlay.querySelector('[data-settings-signin]')).not.toBeNull();
   });
 });

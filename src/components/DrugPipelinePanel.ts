@@ -1,24 +1,16 @@
 import type {
   DrugApproval,
   DrugPipelineEntry,
-  ListDrugApprovalsResponse,
   ListDrugPipelineResponse,
-  PharmaServiceClient,
   PipelineFacetCount,
 } from '@/generated/client/worldmonitor/pharma/v1/service_client';
 import { Panel } from './Panel';
+import { createLazyClient, getRpcBaseUrl, rpcFetch } from '@/services/rpc-client';
+import { PharmaServiceClient } from '@/services/generated-rpc-clients';
 import { t, getLocale } from '@/services/i18n';
 import { joinSafeHtml, safeHtml, safeUrlAttr, type SafeHtml } from '@/utils/sanitize';
 
-let _client: PharmaServiceClient | null = null;
-async function getPharmaClient(): Promise<PharmaServiceClient> {
-  if (!_client) {
-    const { PharmaServiceClient } = await import('@/generated/client/worldmonitor/pharma/v1/service_client');
-    const { getRpcBaseUrl } = await import('@/services/rpc-client');
-    _client = new PharmaServiceClient(getRpcBaseUrl(), { fetch: (...args: Parameters<typeof fetch>) => globalThis.fetch(...args) });
-  }
-  return _client;
-}
+const getPharmaClient = createLazyClient(() => new PharmaServiceClient(getRpcBaseUrl(), { fetch: rpcFetch }));
 
 type View = 'pipeline' | 'approvals';
 
@@ -36,7 +28,12 @@ const MODALITY_COLORS: Record<string, string> = {
   other: '#95a5a6',
 };
 
+// Acronyms read the same in every locale, so they are not locale strings.
+const ACRONYM_LABELS: Record<string, string> = { adc: 'ADC', rna: 'RNA' };
+
 function label(group: 'modality' | 'area', key: string): string {
+  const acronym = group === 'modality' ? ACRONYM_LABELS[key] : undefined;
+  if (acronym) return acronym;
   const path = `components.drugPipeline.${group}.${key}`;
   const translated = t(path);
   return translated === path ? key.replace(/_/g, ' ') : translated;
@@ -114,8 +111,8 @@ export class DrugPipelinePanel extends Panel {
   private modality = '';
   private area = '';
   private novelOnly = true;
+  // One response carries both tabs: filtered trials and (unfiltered) recent approvals.
   private pipeline: ListDrugPipelineResponse | null = null;
-  private approvals: ListDrugApprovalsResponse | null = null;
   private requestSeq = 0;
 
   constructor() {
@@ -127,8 +124,7 @@ export class DrugPipelinePanel extends Panel {
       const next = tab.dataset.drugView === 'approvals' ? 'approvals' : 'pipeline';
       if (next === this.view) return;
       this.view = next;
-      if (next === 'approvals' && !this.approvals) void this.fetchData();
-      else this.render();
+      this.render();
     });
     this.content.addEventListener('change', (e) => {
       const el = e.target as HTMLInputElement | HTMLSelectElement;
@@ -142,32 +138,23 @@ export class DrugPipelinePanel extends Panel {
   }
 
   public async fetchData(): Promise<boolean> {
-    const hasData = this.view === 'pipeline' ? this.pipeline : this.approvals;
-    if (!hasData) this.showLoading();
+    if (!this.pipeline) this.showLoading();
     const seq = ++this.requestSeq;
     try {
-      const client = await getPharmaClient();
-      if (this.view === 'approvals') {
-        const resp = await client.listDrugApprovals({});
-        if (seq !== this.requestSeq) return false;
-        if (resp.unavailable) return this.fail(t('components.drugPipeline.errors.noData'), Boolean(this.approvals));
-        this.approvals = resp;
-      } else {
-        const resp = await client.listDrugPipeline({
-          modality: this.modality,
-          therapeuticArea: this.area,
-          novelOnly: this.novelOnly,
-          limit: PIPELINE_LIMIT,
-        });
-        if (seq !== this.requestSeq) return false;
-        if (resp.unavailable) return this.fail(t('components.drugPipeline.errors.noData'), Boolean(this.pipeline));
-        this.pipeline = resp;
-      }
+      const resp = await getPharmaClient().listDrugPipeline({
+        modality: this.modality,
+        therapeuticArea: this.area,
+        novelOnly: this.novelOnly,
+        limit: PIPELINE_LIMIT,
+      });
+      if (seq !== this.requestSeq) return false;
+      if (resp.unavailable) return this.fail(t('components.drugPipeline.errors.noData'), Boolean(this.pipeline));
+      this.pipeline = resp;
       this.render();
       return true;
     } catch (e) {
       if (seq !== this.requestSeq) return false;
-      return this.fail(e instanceof Error ? e.message : t('components.drugPipeline.errors.failedToLoad'), Boolean(hasData));
+      return this.fail(e instanceof Error ? e.message : t('components.drugPipeline.errors.failedToLoad'), Boolean(this.pipeline));
     }
   }
 
@@ -222,20 +209,20 @@ export class DrugPipelinePanel extends Panel {
       <div style="font-size:10px;color:var(--text-dim);padding-top:10px;line-height:1.4">${t('components.drugPipeline.disclaimer')}</div>`;
   }
 
-  private renderApprovals(data: ListDrugApprovalsResponse): SafeHtml {
-    if (data.approvals.length === 0) {
-      return safeHtml`<div style="padding:16px 0;text-align:center;font-size:11px;color:var(--text-dim)">${t('components.drugPipeline.noMatches')}</div>`;
-    }
+  private renderApprovals(data: ListDrugPipelineResponse): SafeHtml {
+    const empty = (text: string): SafeHtml =>
+      safeHtml`<div style="padding:16px 0;text-align:center;font-size:11px;color:var(--text-dim)">${text}</div>`;
+    // "No data" and "no approvals" are different answers; never show the second for the first.
+    if (data.approvalsUnavailable) return empty(t('components.drugPipeline.errors.noData'));
+    if (data.approvals.length === 0) return empty(t('components.drugPipeline.noMatches'));
     return safeHtml`${joinSafeHtml(data.approvals.map(renderApproval))}
       <div style="font-size:10px;color:var(--text-dim);padding-top:10px;line-height:1.4">${t('components.drugPipeline.approvalsNote')}</div>`;
   }
 
   private render(): void {
-    const data = this.view === 'pipeline' ? this.pipeline : this.approvals;
+    const data = this.pipeline;
     if (!data) return;
-    const body = this.view === 'pipeline'
-      ? this.renderPipeline(data as ListDrugPipelineResponse)
-      : this.renderApprovals(data as ListDrugApprovalsResponse);
+    const body = this.view === 'pipeline' ? this.renderPipeline(data) : this.renderApprovals(data);
     this.setSafeContent(safeHtml`<div style="padding:0 14px 12px;max-height:520px;overflow-y:auto">${this.renderTabs()}${body}</div>`);
   }
 }

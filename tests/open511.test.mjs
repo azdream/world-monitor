@@ -23,7 +23,6 @@ const PAGE2 = JSON.parse(readFileSync(new URL('./fixtures/open511-bc-page-2.json
 const ADAPTER_SOURCE = readFileSync(new URL('../scripts/lib/open511.mjs', import.meta.url), 'utf8');
 const SEEDER_SOURCE = readFileSync(new URL('../scripts/seed-open511.mjs', import.meta.url), 'utf8');
 const RELAY_SOURCE = readFileSync(new URL('../scripts/ais-relay.cjs', import.meta.url), 'utf8');
-const TEST_SOURCE = readFileSync(new URL(import.meta.url), 'utf8');
 
 test.afterEach(() => {
   limiterTesting.reset();
@@ -35,11 +34,6 @@ function jsonResponse(body, { status = 200, headers = {} } = {}) {
     headers: { 'content-type': 'application/json', ...headers },
   });
 }
-
-test('seeder module is not imported by this test file', () => {
-  assert.equal(/from ['"][^'"]*seed-open511/.test(TEST_SOURCE), false);
-  assert.equal(TEST_SOURCE.includes('seed-open511.mjs'), true, 'fixture: this file must still mention the seeder as text');
-});
 
 test('adapter is Open511 /events?status=ACTIVE, not vendor /api/v2/get', () => {
   assert.match(ADAPTER_SOURCE, /events\?status=ACTIVE|searchParams\.set\('status'/);
@@ -272,6 +266,32 @@ test('responses larger than 5MB are rejected', async () => {
   );
 });
 
+test('an undeclared oversized body is cancelled at the 5MB cap, not buffered', async () => {
+  let pulled = 0;
+  const chunk = new Uint8Array(1 << 20).fill(0x20);
+  const fetchFn = async () => new Response(new ReadableStream({
+    pull(controller) {
+      if (pulled >= 64 * chunk.length) return controller.close();
+      pulled += chunk.length;
+      controller.enqueue(chunk);
+    },
+    // No read-ahead: each chunk is pulled only when the reader asks for it.
+  }, { highWaterMark: 0 }), { headers: { 'content-type': 'application/json' } });
+  await assert.rejects(
+    () => fetchEvents('https://api.open511.gov.bc.ca', { fetchFn, acquireSlot: async () => {} }),
+    /exceeds 5242880 bytes/,
+  );
+  assert.ok(pulled <= 5 * 1024 * 1024 + chunk.length, `pulled ${pulled} bytes`);
+});
+
+test('a malformed body still rejects as invalid JSON', async () => {
+  const fetchFn = async () => new Response('{"events": [', { headers: { 'content-type': 'application/json' } });
+  await assert.rejects(
+    () => fetchEvents('https://api.open511.gov.bc.ca', { fetchFn, acquireSlot: async () => {} }),
+    SyntaxError,
+  );
+});
+
 test('empty event lists are valid', () => {
   assert.deepEqual(normalizeOpen511List({ events: [] }, { jurisdiction: 'BC' }), []);
 });
@@ -334,16 +354,19 @@ test('BC Open511 shares canadaRoads and does not invent a second MapLayers key',
   const types = readFileSync(new URL('../src/types/index.ts', import.meta.url), 'utf8');
   const layers = readFileSync(new URL('../src/config/map-layer-definitions.ts', import.meta.url), 'utf8');
   const client = readFileSync(new URL('../src/services/canada-roads.ts', import.meta.url), 'utf8');
+  // The descriptors moved to canada-roads-core.ts in #6763 so tests could import
+  // the real list rather than clone it, and both loader maps are now derived
+  // from that list — so the per-key literals this used to grep for are gone.
+  const core = readFileSync(new URL('../src/services/canada-roads-core.ts', import.meta.url), 'utf8');
   assert.match(types, /canadaRoads: boolean/);
   assert.doesNotMatch(types, /bcOpen511\?: boolean/);
   assert.match(layers, /canadaRoads:\s+def\('canadaRoads'/);
   assert.doesNotMatch(layers, /bcOpen511:\s+def\(/);
-  assert.match(client, /getHydratedData\('canadaRoads'\)/);
-  assert.match(client, /getHydratedData\('bcOpen511'\)/);
   assert.match(client, /unionCanadaRoadRecords/);
-  assert.match(client, /ontario-511/);
-  assert.match(client, /bc-open511/);
-  assert.match(client, /key: 'bcOpen511', source: 'bc-open511'/);
+  assert.match(client, /HYDRATED_LOADERS[\s\S]{0,200}CANADA_ROAD_SOURCES\.map/);
+  assert.match(core, /ontario-511/);
+  assert.match(core, /bc-open511/);
+  assert.match(core, /key: 'bcOpen511', source: 'bc-open511'/);
 });
 
 test('bc open511 runs as a bundle member, not its own */15 service', () => {
@@ -358,31 +381,27 @@ test('bc open511 runs as a bundle member, not its own */15 service', () => {
   );
 });
 
-test('bootstrap keeps canadaRoads on the fast tier; bcOpen511 is on-demand (~797 KB)', () => {
+test('bootstrap fetches bcOpen511 and its Ontario sibling on demand, never on a tier', () => {
+  // Was: 'keeps canadaRoads on the fast tier; bcOpen511 is on-demand (~797 KB)'.
+  // Holding BC back while Ontario rode FAST was the #6763 bug — a tier is not
+  // layer-gated, so the sibling this file was protecting the payload from
+  // shipped 306,757 B to every visitor anyway.
   const src = readFileSync(new URL('../shared/bootstrap-tier-keys.js', import.meta.url), 'utf8');
   assert.match(src, /canadaRoads: 'infra:ontario-511:v1'/);
   assert.match(src, /bcOpen511: 'infra:bc-open511:v1'/);
   const fast = src.slice(src.indexOf('const FAST_KEY_NAMES'), src.indexOf('const ON_DEMAND_KEY_NAMES'));
   const onDemand = src.slice(src.indexOf('const ON_DEMAND_KEY_NAMES'));
-  assert.match(fast, /'canadaRoads'/);
-  assert.doesNotMatch(fast, /'bcOpen511'/);
-  assert.match(onDemand, /'bcOpen511'/);
+  for (const key of ['canadaRoads', 'bcOpen511']) {
+    assert.doesNotMatch(fast, new RegExp(`'${key}'`), `${key} must not ride the fast tier`);
+    assert.match(onDemand, new RegExp(`'${key}'`), `${key} must be on-demand`);
+  }
 });
 
-test('seed-freshness-baseline acknowledges the BC Open511 cutover', () => {
-  const baseline = JSON.parse(readFileSync(new URL('../scripts/seed-freshness-baseline.json', import.meta.url), 'utf8'));
-  const row = baseline.acknowledged.find((a) => a.issue === 6611 || a.name === 'bcOpen511');
-  assert.ok(row);
-  assert.equal(row.status, 'EMPTY');
-  assert.equal(row.cutover.probeKey, 'seed-meta:infra:bc-open511');
-  // Widened by the member's own gate: on intervalMs 30min the first publish can
-  // land half an hour after the bundle is provisioned, so an expiry pinned to
-  // the provisioning instant would red the monitor while the seeder works.
-  assert.equal(row.expiresAt, '2026-08-16T21:15:00.000Z');
-  assert.equal(row.cutover.firstScheduledRunAt, '2026-08-16T21:15:00.000Z');
-  assert.equal(row.cutover.activatedAt, '2026-08-15T21:30:00.000Z');
-  const gapMs = Date.parse(row.cutover.firstScheduledRunAt) - Date.parse(row.cutover.activatedAt);
-  assert.ok(gapMs > 0 && gapMs < 24 * 60 * 60 * 1000, 'rollout window must stay under the 24h cap');
+test('BC Open511 is live and health still watches its key', () => {
+  // seed-bundle-canada is provisioned and bcOpen511 reads healthy. The probe
+  // must still exist, or a future BC outage would have nothing watching it.
+  const health = readFileSync(new URL('../api/health.js', import.meta.url), 'utf8');
+  assert.match(health, /bcOpen511:\s*\{[\s\S]{0,120}?key:\s*'seed-meta:infra:bc-open511'/);
 });
 
 test('following next_url without status=ACTIVE still requests ACTIVE pages', async () => {

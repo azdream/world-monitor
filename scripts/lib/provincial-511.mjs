@@ -1,14 +1,17 @@
 /**
- * Vendor `/api/v2/get` (and v3 roadconditions) adapter for Ontario 511
- * and Alberta 511. Manitoba (#6622) is the next config row and needs key=;
- * do not fetch it from this adapter until that key is configured.
+ * Vendor `/api/v2/get` (and v3 roadconditions) adapter for Ontario 511,
+ * Alberta 511, and Manitoba 511. Manitoba requires key= and lang=en;
+ * never put the secret in logs, errors, cache identities, fixtures, or metadata.
  *
  * BC Open511 is a different API — do not pass an Open511 baseUrl here.
  * Host allowlist is derived from the configured baseUrl hostname.
- * acquire511Slot(hostname) is per-host (511on.ca vs 511.alberta.ca).
+ * acquire511Slot(hostname) is per-host (511on.ca vs 511.alberta.ca vs
+ * www.manitoba511.ca).
  */
 
 import { acquire511Slot } from '../_511-rate-limit.mjs';
+import { readBoundedJsonResponse } from '../_china-exchange-transport.mjs';
+import { finiteLat, finiteLon, lonLatPair } from './geo-coord.mjs';
 // #6618 limiter v1 lives in scripts/_511-rate-limit.mjs only — no scripts/shared/ mirror.
 
 const CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36';
@@ -20,6 +23,7 @@ const MAX_PATH_POINTS = 32;
 const VENDOR_511_HOST_META = Object.freeze({
   '511on.ca': Object.freeze({ jurisdiction: 'ON' }),
   '511.alberta.ca': Object.freeze({ jurisdiction: 'AB' }),
+  'www.manitoba511.ca': Object.freeze({ jurisdiction: 'MB' }),
 });
 /** Dict of host -> { jurisdiction }. Not a Set -- do not use as a membership test. */
 export const VENDOR_511_HOSTS = VENDOR_511_HOST_META;
@@ -46,8 +50,49 @@ export const ALBERTA_511 = Object.freeze({
   ]),
 });
 
-// #6622 Manitoba 511 — same vendor /api/v2/get adapter, requires key=.
-// Do not add a Manitoba host or fetch it until that key is configured.
+export const MANITOBA_511_BASE_URL = 'https://www.manitoba511.ca';
+
+export const MANITOBA_511 = Object.freeze({
+  baseUrl: MANITOBA_511_BASE_URL,
+  jurisdiction: 'MB',
+  lang: 'en',
+  resources: Object.freeze([
+    Object.freeze({ resource: 'event', kind: 'event' }),
+    Object.freeze({ resource: 'alerts', kind: 'alert' }),
+  ]),
+});
+
+/**
+ * Request identity for logs / cache keys. Records key= presence, never the secret.
+ * @param {{
+ *   hostname: string,
+ *   resource: string,
+ *   format?: string,
+ *   lang?: string,
+ *   hasKey?: boolean,
+ * }} opts
+ */
+export function vendor511RequestIdentity(opts) {
+  const hostname = String(opts?.hostname || '').toLowerCase();
+  const resource = String(opts?.resource || '');
+  const format = opts?.format || 'json';
+  const params = new URLSearchParams({ format });
+  if (opts?.lang) params.set('lang', opts.lang);
+  params.set('key', opts?.hasKey ? 'present' : 'absent');
+  return `${hostname}${vendor511Path(resource)}?${params.toString()}`;
+}
+
+/**
+ * Strip a vendor key from a URL or error string. Safe to call with the raw
+ * secret: the return value never contains it.
+ * @param {unknown} value
+ * @param {string} [secret]
+ */
+export function redactVendor511Secret(value, secret) {
+  let text = String(value ?? '');
+  if (secret) text = text.split(secret).join('REDACTED');
+  return text.replace(/([?&]key=)[^&]*/gi, '$1REDACTED');
+}
 
 export function isVendor511Host(host) {
   return VENDOR_511_HOST_SET.has(String(host || '').toLowerCase());
@@ -85,26 +130,24 @@ export function decodeEncodedPolyline(encoded) {
   let index = 0;
   let lat = 0;
   let lon = 0;
-  while (index < encoded.length) {
+  const readVarint = () => {
     let shift = 0;
     let result = 0;
-    let byte;
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
+    while (index < encoded.length) {
+      const byte = encoded.charCodeAt(index++) - 63;
+      if (byte < 0 || byte > 0x3f) return null;
       result |= (byte & 0x1f) << shift;
+      if (byte < 0x20) return (result & 1) ? ~(result >> 1) : (result >> 1);
       shift += 5;
-    } while (byte >= 0x20 && index < encoded.length);
-    const dlat = (result & 1) ? ~(result >> 1) : (result >> 1);
+    }
+    return null;
+  };
+  while (index < encoded.length) {
+    const dlat = readVarint();
+    if (dlat == null) return [];
     lat += dlat;
-
-    shift = 0;
-    result = 0;
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
-      result |= (byte & 0x1f) << shift;
-      shift += 5;
-    } while (byte >= 0x20 && index < encoded.length);
-    const dlng = (result & 1) ? ~(result >> 1) : (result >> 1);
+    const dlng = readVarint();
+    if (dlng == null) return [];
     lon += dlng;
     coordinates.push([lon / 1e5, lat / 1e5]);
   }
@@ -138,12 +181,6 @@ export function centroidOfPath(path) {
     lat += point[1];
   }
   return [lon / path.length, lat / path.length];
-}
-
-function finiteCoord(value) {
-  if (value == null || value === '') return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
 }
 
 function textOf(...values) {
@@ -186,10 +223,12 @@ function severityOf(item, { isFullClosure, highImportance, kind } = {}) {
 export function normalize511Record(item, ctx) {
   const kind = ctx.kind;
   const jurisdiction = ctx.jurisdiction || 'ON';
-  const lat = finiteCoord(item?.Latitude ?? item?.latitude ?? item?.lat);
-  const lon = finiteCoord(item?.Longitude ?? item?.longitude ?? item?.lon ?? item?.lng);
+  const lat = finiteLat(item?.Latitude ?? item?.latitude ?? item?.lat);
+  const lon = finiteLon(item?.Longitude ?? item?.longitude ?? item?.lon ?? item?.lng);
   const encoded = polylinesFrom(item?.EncodedPolyline ?? item?.encodedPolyline);
-  const decoded = encoded.flatMap(decodeEncodedPolyline);
+  // A corrupt encoded polyline decodes to arithmetically valid but off-planet
+  // deltas, and centroidOfPath averages whatever it is handed.
+  const decoded = encoded.flatMap(decodeEncodedPolyline).filter(point => lonLatPair(point) != null);
   const path = downsamplePath(decoded);
   const centroid = (lat != null && lon != null) ? [lon, lat] : centroidOfPath(decoded);
   const isFullClosure = Boolean(item?.IsFullClosure ?? item?.isFullClosure);
@@ -206,6 +245,9 @@ export function normalize511Record(item, ctx) {
     isFullClosure,
     lanesAffected: item?.LanesAffected ?? item?.lanesAffected ?? null,
     roadwayName: textOf(item?.RoadwayName, item?.roadwayName),
+    locationDescription: textOf(item?.LocationDescription, item?.locationDescription),
+    roadConditions: (Array.isArray(item?.Condition) ? item.Condition : [item?.Condition])
+      .filter((value) => typeof value === 'string' && value.trim()).map((value) => value.trim()),
     headline: textOf(
       item?.RoadwayName,
       item?.LocationDescription,
@@ -308,8 +350,8 @@ export function validateVendor511Envelope(envelope) {
  * succeeded. Empty success counts. Any failed resource is partial:
  * last-good must stay, and health must not flip green, until a
  * complete successor arrives. Ontario resources are event+alerts+
- * roadconditions (all three must succeed); Alberta resources are
- * event+alerts (roadconditions 404s and is not configured).
+ * roadconditions (all three must succeed); Alberta and Manitoba
+ * resources are event+alerts (roadconditions 404s and is not configured).
  *
  * @param {{ failedResources?: string[] } | null | undefined} envelope
  * @param {{ resources?: ReadonlyArray<{ resource: string }> } | null | undefined} config
@@ -322,22 +364,33 @@ export function isCompleteVendor511(envelope, config) {
   return envelope.failedResources.length === 0;
 }
 
+// Streams the body and cancels it at the cap; a body without a declared
+// length is never buffered whole.
 async function readLimitedJson(resp, maxBytes) {
-  const contentLength = resp.headers?.get?.('content-length');
-  if (contentLength && Number(contentLength) > maxBytes) {
-    throw new Error(`provincial-511: payload exceeds ${maxBytes} bytes`);
+  try {
+    return await readBoundedJsonResponse(resp, maxBytes);
+  } catch (err) {
+    if (err?.code === 'RESPONSE_TOO_LARGE') throw new Error(`provincial-511: payload exceeds ${maxBytes} bytes`);
+    throw err?.code === 'MALFORMED_RESPONSE' && err.cause ? err.cause : err;
   }
-  const buffer = Buffer.from(await resp.arrayBuffer());
-  if (buffer.byteLength > maxBytes) {
-    throw new Error(`provincial-511: payload exceeds ${maxBytes} bytes`);
-  }
-  return JSON.parse(buffer.toString('utf8'));
 }
 
 function kindForResource(resource) {
   if (resource === 'alerts') return 'alert';
   if (resource === 'roadconditions') return 'condition';
   return 'event';
+}
+
+function hasSupported511ListShape(body, resource) {
+  if (Array.isArray(body)) return true;
+  if (!body || typeof body !== 'object') return false;
+
+  const resourceListKey = resource === 'alerts'
+    ? 'alerts'
+    : resource === 'roadconditions'
+      ? 'roadconditions'
+      : 'events';
+  return Array.isArray(body[resourceListKey]) || Array.isArray(body.data);
 }
 
 /**
@@ -348,6 +401,7 @@ function kindForResource(resource) {
  * @param {{
  *   format?: string,
  *   key?: string,
+ *   lang?: string,
  *   fetchFn?: typeof fetch,
  *   userAgent?: string,
  *   timeoutMs?: number,
@@ -365,28 +419,45 @@ export async function get(baseUrl, resource, opts = {}) {
   const fetchFn = opts.fetchFn ?? globalThis.fetch;
   const acquireSlot = opts.acquireSlot ?? acquire511Slot;
   const jurisdiction = opts.jurisdiction || VENDOR_511_HOSTS[hostname]?.jurisdiction || 'ON';
+  const secret = typeof opts.key === 'string' && opts.key ? opts.key : '';
 
   const url = new URL(vendor511Path(resource), baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`);
   url.searchParams.set('format', format);
-  if (opts.key) url.searchParams.set('key', opts.key);
+  if (opts.lang) url.searchParams.set('lang', opts.lang);
+  if (secret) url.searchParams.set('key', secret);
 
   await acquireSlot(hostname);
 
-  const resp = await fetchFn(url.toString(), {
-    headers: {
-      Accept: 'application/json',
-      'User-Agent': userAgent,
-    },
-    signal: AbortSignal.timeout(timeoutMs),
-    redirect: 'error',
-  });
+  let resp;
+  try {
+    resp = await fetchFn(url.toString(), {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': userAgent,
+      },
+      signal: AbortSignal.timeout(timeoutMs),
+      redirect: 'error',
+    });
+  } catch (err) {
+    throw new Error(`provincial-511 ${resource}: ${redactVendor511Secret(err?.message || err, secret)}`);
+  }
   if (!resp.ok) {
     throw new Error(`provincial-511 ${resource}: HTTP ${resp.status}`);
   }
   const body = await readLimitedJson(resp, maxBytes);
+  if (!hasSupported511ListShape(body, resource)) {
+    throw new Error(`provincial-511 ${resource}: unexpected response shape`);
+  }
   return {
     records: normalize511List(body, kindForResource(resource), jurisdiction),
     raw: body,
+    requestIdentity: vendor511RequestIdentity({
+      hostname,
+      resource,
+      format,
+      lang: opts.lang,
+      hasKey: Boolean(secret),
+    }),
   };
 }
 
@@ -407,6 +478,7 @@ function defaultSleep(ms) {
  *   fetchFn?: typeof fetch,
  *   userAgent?: string,
  *   key?: string,
+ *   lang?: string,
  *   staggerMs?: number,
  *   sleep?: (ms: number) => Promise<void>,
  *   getFn?: typeof get,
@@ -421,6 +493,7 @@ export async function fetchVendor511(config, opts = {}) {
   const alerts = [];
   const conditions = [];
   const failedResources = [];
+  const secret = opts.key ?? config.key;
 
   for (let i = 0; i < resources.length; i++) {
     if (i > 0 && staggerMs > 0) await sleep(staggerMs);
@@ -428,7 +501,8 @@ export async function fetchVendor511(config, opts = {}) {
     try {
       const result = await getFn(config.baseUrl, resource, {
         format: 'json',
-        key: opts.key ?? config.key,
+        lang: opts.lang ?? config.lang,
+        key: secret,
         fetchFn: opts.fetchFn,
         userAgent: opts.userAgent,
         jurisdiction: config.jurisdiction,
@@ -439,7 +513,10 @@ export async function fetchVendor511(config, opts = {}) {
       else events.push(...records);
     } catch (err) {
       failedResources.push(resource);
-      console.warn(`  provincial-511 ${config.jurisdiction} ${resource}: ${err.message || err}`);
+      console.warn(
+        `  provincial-511 ${config.jurisdiction} ${resource}: `
+        + redactVendor511Secret(err.message || err, secret),
+      );
     }
   }
 

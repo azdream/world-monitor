@@ -1,4 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
+import { attachBrowserLossDiagnostics, pageBrowserLossEvents } from './browser-loss-diagnostics';
+import { acceptTesterKeySession } from './helpers/accept-tester-key-session';
+import { evidenceScreenshot } from './evidence-screenshot';
 
 /**
  * Settings → SOURCES must reach the live dashboard when the modal closes (#6380).
@@ -53,7 +56,8 @@ async function installDigestAccounting(page: Page): Promise<DigestLog> {
 
   // Catch-all first: later-registered routes win in Playwright, so the digest
   // handler below still sees its own traffic.
-  await page.route(/^https?:\/\/(?!(127\.0\.0\.1:4173|localhost:4173)(?:\/|$)).*/i, (route) => {
+  const localOrigin = new URL(test.info().project.use.baseURL as string).origin;
+  await page.route((url) => /^https?:$/.test(url.protocol) && url.origin !== localOrigin, (route) => {
     return route.abort('blockedbyclient');
   });
 
@@ -76,8 +80,9 @@ async function installDigestAccounting(page: Page): Promise<DigestLog> {
   return log;
 }
 
-async function seedProFullVariant(page: Page): Promise<void> {
-  await page.addInitScript(() => {
+/** Seed a Full Pro profile once, so reload checks retain the source choices made by the test. */
+async function seedProFullVariant(page: Page, returningProfile = false, locale = 'en'): Promise<void> {
+  await page.addInitScript(({ returning, language }) => {
     // Seed once per tab: addInitScript re-runs on every navigation, and a
     // re-seed would wipe the source preferences this spec sets from the UI.
     if (sessionStorage.getItem('__settings_source_live_apply_seeded__')) return;
@@ -85,6 +90,7 @@ async function seedProFullVariant(page: Page): Promise<void> {
     sessionStorage.clear();
     sessionStorage.setItem('__settings_source_live_apply_seeded__', '1');
     localStorage.setItem('worldmonitor-variant', 'full');
+    localStorage.setItem('wm-locale-explicit', language);
     // Pro so boot leaves the source selection alone. A free profile runs
     // reconcileSourceLimitForTier (App.ts), which auto-disables sources down to
     // FREE_MAX_SOURCES (80) — the full variant ships well over that — and
@@ -95,7 +101,12 @@ async function seedProFullVariant(page: Page): Promise<void> {
     localStorage.setItem('wm-layer-warning-dismissed', 'true');
     localStorage.setItem('wm-pro-banner-launched-dismissed', String(Date.now()));
     localStorage.setItem('worldmonitor-mission-preset-dismissed-v1', '1');
-  });
+    if (returning) {
+      localStorage.setItem('worldmonitor-sources-reduction-v3', 'done');
+      localStorage.setItem('worldmonitor-disabled-feeds', '["user-choice"]');
+    }
+  }, { returning: returningProfile, language: locale });
+  await acceptTesterKeySession(page);
 }
 
 /**
@@ -109,13 +120,22 @@ async function seedProFullVariant(page: Page): Promise<void> {
 async function bootUntilNewsSettles(page: Page): Promise<DigestLog> {
   const log = await installDigestAccounting(page);
 
-  const firstDigest = page.waitForRequest(DIGEST_GLOB);
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(
-    () => document.documentElement.dataset.wmEventHandlersReady === 'true',
+  // Capture terminal signals during boot; normal teardown must remain silent.
+  const lossWatch = attachBrowserLossDiagnostics(
+    pageBrowserLossEvents(page),
+    'settings-source-live-apply bootUntilNewsSettles',
   );
-  await firstDigest;
-  await page.waitForTimeout(SETTLE_MS);
+  try {
+    const firstDigest = page.waitForRequest(DIGEST_GLOB);
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(
+      () => document.documentElement.dataset.wmEventHandlersReady === 'true',
+    );
+    await firstDigest;
+    await page.waitForTimeout(SETTLE_MS);
+  } finally {
+    lossWatch.dispose();
+  }
 
   expect(
     log.urls.length,
@@ -131,7 +151,7 @@ async function openSourcesTab(page: Page): Promise<void> {
   const settingsBtn = page.locator('#unifiedSettingsBtn');
   await expect(settingsBtn).toBeVisible({ timeout: 60_000 });
   await settingsBtn.click();
-  await page.locator('#us-tab-sources').click();
+  await page.locator('[data-settings-nav="sources"]').click();
   await expect(page.locator('#usSourceToggles .source-toggle-item').first()).toBeVisible({
     timeout: 15_000,
   });
@@ -167,20 +187,140 @@ async function disableFirstSources(page: Page, count: number): Promise<string[]>
 }
 
 test.describe('settings source live apply (#6380)', () => {
+  for (const preference of ['missing', 'empty', 'write-failure'] as const) {
+    test(`German RSS startup handles ${preference} preferences without losing opt-in rules`, async ({ page }) => {
+      await seedProFullVariant(page, true);
+      await page.addInitScript((mode) => {
+        if (!sessionStorage.getItem('__german_rss_missing_seeded__')) {
+          localStorage.removeItem('worldmonitor-disabled-feeds');
+          if (mode === 'empty') localStorage.setItem('worldmonitor-disabled-feeds', '[]');
+          for (const key of [
+            'worldmonitor-frontline-europe-enable-v1',
+            'worldmonitor-strategic-defaults-enable-v1',
+            'worldmonitor-regional-feed-rollout-reconcile-v1',
+            'worldmonitor-canada-arctic-optin-v1',
+            'worldmonitor-canada-depth-optin-v1',
+            'worldmonitor-crisis-desk-optin-v1',
+            'worldmonitor-curated-regional-optin-v1',
+          ]) localStorage.setItem(key, 'done');
+          sessionStorage.setItem('__german_rss_missing_seeded__', '1');
+        }
+        if (mode === 'write-failure' && !sessionStorage.getItem('__german_rss_allow_writes__')) {
+          const original = Storage.prototype.setItem;
+          Storage.prototype.setItem = function (key: string, value: string) {
+            if (this === localStorage && key === 'worldmonitor-disabled-feeds') {
+              throw new DOMException('Test preference quota', 'QuotaExceededError');
+            }
+            original.call(this, key, value);
+          };
+        }
+      }, preference);
+      await bootUntilNewsSettles(page);
+      if (preference === 'write-failure') {
+        expect(await page.evaluate(() => localStorage.getItem('worldmonitor-german-rss-sources-v1'))).toBeNull();
+        await page.evaluate(() => sessionStorage.setItem('__german_rss_allow_writes__', '1'));
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await page.waitForFunction(() => document.documentElement.dataset.wmEventHandlersReady === 'true');
+      }
+      expect(await page.evaluate(() => localStorage.getItem('worldmonitor-german-rss-sources-v1'))).toBe('done');
+      const disabled = await page.evaluate(() => JSON.parse(localStorage.getItem('worldmonitor-disabled-feeds') ?? 'null') as string[] | null);
+      expect(disabled).not.toBeNull();
+      if (preference === 'empty') expect(disabled).toEqual([]);
+      else for (const name of ['Deutschlandfunk', 'ZDFheute']) expect(disabled).toContain(name);
+      await openSourcesTab(page);
+      for (const name of ['Deutschlandfunk', 'ZDFheute']) {
+        await page.locator('.sources-search input').fill(name);
+        const toggle = page.locator(`#usSourceToggles .source-toggle-item[data-source="${name}"]`);
+        if (preference === 'empty') await expect(toggle).toHaveClass(/\bactive\b/);
+        else await expect(toggle).not.toHaveClass(/\bactive\b/);
+      }
+    });
+  }
+  for (const locale of ['en', 'de']) {
+    test(`German RSS sources default correctly in ${locale} and retain explicit choices`, async ({ page }, testInfo) => {
+      await seedProFullVariant(page, true, locale);
+      await bootUntilNewsSettles(page);
+      await openSourcesTab(page);
+      await page.locator('.sources-search input').fill('Deutschlandfunk');
+      const source = page.locator('#usSourceToggles .source-toggle-item[data-source="Deutschlandfunk"]');
+      const zdf = page.locator('#usSourceToggles .source-toggle-item[data-source="ZDFheute"]');
+      const initiallyEnabled = locale === 'de';
+      if (initiallyEnabled) await expect(source).toHaveClass(/\bactive\b/);
+      else await expect(source).not.toHaveClass(/\bactive\b/);
+      const capture = async (name: string) => {
+        const path = testInfo.outputPath(`${locale}-${name}.png`);
+        await evidenceScreenshot(page, { path }, { testInfo, name: `${locale} ${name}` });
+      };
+      await capture('desktop-default');
+      await source.click();
+      await page.locator('.sources-search input').fill('ZDFheute');
+      if (initiallyEnabled) await expect(zdf).toHaveClass(/\bactive\b/);
+      else await expect(zdf).not.toHaveClass(/\bactive\b/);
+      await zdf.click();
+      await page.locator('.unified-settings-close').click();
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => document.documentElement.dataset.wmEventHandlersReady === 'true');
+      await openSourcesTab(page);
+      for (const name of ['Deutschlandfunk', 'ZDFheute']) {
+        await page.locator('.sources-search input').fill(name);
+        const item = page.locator(`#usSourceToggles .source-toggle-item[data-source="${name}"]`);
+        if (initiallyEnabled) await expect(item).not.toHaveClass(/\bactive\b/);
+        else await expect(item).toHaveClass(/\bactive\b/);
+      }
+      const disabled = await page.evaluate(() => JSON.parse(localStorage.getItem('worldmonitor-disabled-feeds') ?? '[]') as string[]);
+      expect(disabled).toContain('user-choice');
+      for (const name of ['Deutschlandfunk', 'ZDFheute']) expect(disabled.includes(name)).toBe(initiallyEnabled);
+      await capture('desktop-saved-choice');
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expect(zdf).toBeVisible();
+      await capture('mobile-saved-choice');
+    });
+  }
+  test('new curated regional sources stay opt-in for a returning Pro profile and retain a later choice', async ({ page }, testInfo) => {
+    await seedProFullVariant(page, true);
+    await bootUntilNewsSettles(page);
+    await openSourcesTab(page);
+    for (const name of ['Guardian Africa', 'France 24 Africa', 'Guardian Caribbean', 'Guardian Pacific', 'France 24 Asia Pacific']) {
+      await expect(page.locator(`#usSourceToggles .source-toggle-item[data-source="${name}"]`)).not.toHaveClass(/\bactive\b/);
+    }
+    const pacific = page.locator('#usSourceToggles .source-toggle-item[data-source="Guardian Pacific"]');
+    await pacific.click();
+    await expect(pacific).toHaveClass(/\bactive\b/);
+    await page.locator('.unified-settings-close').click();
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => document.documentElement.dataset.wmEventHandlersReady === 'true');
+    await openSourcesTab(page);
+    await expect(pacific).toHaveClass(/\bactive\b/);
+    const disabled = await page.evaluate(() => JSON.parse(localStorage.getItem('worldmonitor-disabled-feeds') ?? '[]') as string[]);
+    expect(disabled).toContain('user-choice');
+    expect(disabled).not.toContain('Guardian Pacific');
+    expect(disabled).toContain('France 24 Asia Pacific');
+    await page.locator('.sources-search input').fill('Guardian');
+    const screenshotPath = testInfo.outputPath('regional-source-choice.png');
+    await evidenceScreenshot(page, { path: screenshotPath }, { testInfo, name: 'Regional source choice after reload' });
+  });
+
   test('toggling sources and closing Settings reloads news once, without a reload', async ({ page }) => {
     await seedProFullVariant(page);
     const log = await bootUntilNewsSettles(page);
+    // #6724: snapshot the count AFTER the boot check passes, so a late boot
+    // digest is never charged to the toggle assertion below.
+    const baseline = log.urls.length;
 
     await openSourcesTab(page);
     const disabled = await disableFirstSources(page, TOGGLE_COUNT);
 
     // Clicking inside the modal must not refetch — the overlay covers the
     // dashboard, so a per-click load is pure request spend the user cannot see.
+    // #6724: a late boot digest that lands after the SETTLE_MS window but
+    // before this assertion was charged to the toggle. Snapshot the count
+    // after the boot check passes, then assert the delta across the modal
+    // interaction — a straggler that predates the modal cannot inflate it.
     expect(
-      log.urls.length,
+      log.urls.length - baseline,
       `toggling ${TOGGLE_COUNT} sources inside the open modal must not issue a news load ` +
-        `(requests: ${log.urls.length})`,
-    ).toBe(1);
+        `(requests since boot settle: ${log.urls.length - baseline}, baseline: ${baseline})`,
+    ).toBe(0);
 
     const secondDigest = page.waitForRequest(DIGEST_GLOB, { timeout: 30_000 });
     await page.locator('.unified-settings-close').click();
@@ -190,26 +330,29 @@ test.describe('settings source live apply (#6380)', () => {
 
     // ...and exactly one, not one per toggle. Wait out the same window the boot
     // check used, so a delayed storm cannot slip past after the first arrival.
+    // #6724: same baseline-delta pattern as the toggle assertion above.
     await page.waitForTimeout(SETTLE_MS);
     expect(
-      log.urls.length,
+      log.urls.length - baseline,
       `disabling ${disabled.length} sources (${disabled.join(', ')}) must cost exactly one ` +
-        `extra news load, not one per click (requests: ${log.urls.length})`,
-    ).toBe(2);
+        `extra news load, not one per click (requests since baseline: ${log.urls.length - baseline})`,
+    ).toBe(1);
   });
 
   test('closing Settings without touching sources issues no news load', async ({ page }) => {
     await seedProFullVariant(page);
     const log = await bootUntilNewsSettles(page);
+    // #6724: same baseline-delta pattern.
+    const baseline = log.urls.length;
 
     await openSourcesTab(page);
     await page.locator('.unified-settings-close').click();
     await page.waitForTimeout(SETTLE_MS);
 
     expect(
-      log.urls.length,
+      log.urls.length - baseline,
       `an unchanged source selection has the same news work-list, so closing Settings must ` +
-        `not spend a digest request (requests: ${log.urls.length})`,
-    ).toBe(1);
+        `not spend a digest request (requests since baseline: ${log.urls.length - baseline})`,
+    ).toBe(0);
   });
 });

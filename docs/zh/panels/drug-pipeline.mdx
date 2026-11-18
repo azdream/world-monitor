@@ -1,6 +1,6 @@
 ---
 title: "新药管线"
-description: "按预计监管决定窗口分组、可按药物类型筛选的后期临床试验，以及近期 FDA 首次批准的药物。"
+description: "新药管线面板汇总由企业发起的 3 期临床试验，按预计最早的监管决定季度分组，并可按药物类型（小分子、抗体、ADC、细胞疗法、基因疗法、RNA、疫苗等）和治疗领域筛选，同时列出最近 180 天内 FDA 首次批准的 NDA 与 BLA 药物。决定窗口为根据主要完成日期推算的估计值。"
 ---
 
 **Drug Pipeline** 面板回答一个问题：哪些新药可能迎来监管决定，大约在什么时候。它按决定最早可能落地的季度列出企业发起的 3 期试验，并单独列出近期 FDA 的首次批准。
@@ -36,12 +36,11 @@ description: "按预计监管决定窗口分组、可按药物类型筛选的后
 
 ## 数据来源
 
-两个 RPC 支持该面板：
+单个 RPC 支持这两个标签页：
 
-- `GET /api/pharma/v1/list-drug-pipeline` — 接受 `modality`、`therapeutic_area`、`novel_only` 和 `limit`（默认 200，最大 500）。
-- `GET /api/pharma/v1/list-drug-approvals`
+- `GET /api/pharma/v1/list-drug-pipeline` — 接受 `modality`、`therapeutic_area`、`novel_only` 和 `limit`（默认 200，最大 500）。响应同时包含近期批准，试验筛选条件不会影响这部分。
 
-种子器（`scripts/seed-drug-pipeline.mjs`）组合三个公开来源，均无需注册：
+种子器（`scripts/seed-drug-pipeline.mjs`）组合以下公开来源，均无需注册：
 
 - **ClinicalTrials.gov API v2** — 主要完成日期落在过去 12 个月到未来 30 个月之间、由企业主导的干预性 3 期试验。这是唯一的硬依赖。
 - **ChEMBL** — 用于名称匹配的分子类型（药物类型）和获批状态。ChEMBL 不可用时，药物类型回退到名称词干和注册库的干预类型。

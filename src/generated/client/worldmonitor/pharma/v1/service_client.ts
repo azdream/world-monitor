@@ -15,6 +15,8 @@ export interface ListDrugPipelineResponse {
   areaCounts: PipelineFacetCount[];
   generatedAt: string;
   unavailable: boolean;
+  approvals: DrugApproval[];
+  approvalsUnavailable: boolean;
 }
 
 export interface DrugPipelineEntry {
@@ -41,16 +43,6 @@ export interface DrugPipelineEntry {
 export interface PipelineFacetCount {
   key: string;
   count: number;
-}
-
-export interface ListDrugApprovalsRequest {
-}
-
-export interface ListDrugApprovalsResponse {
-  approvals: DrugApproval[];
-  total: number;
-  generatedAt: string;
-  unavailable: boolean;
 }
 
 export interface DrugApproval {
@@ -140,29 +132,6 @@ export class PharmaServiceClient {
     }
 
     return await resp.json() as ListDrugPipelineResponse;
-  }
-
-  async listDrugApprovals(_req: ListDrugApprovalsRequest, options?: PharmaServiceCallOptions): Promise<ListDrugApprovalsResponse> {
-    let path = "/api/pharma/v1/list-drug-approvals";
-    const url = this.baseURL + path;
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      ...this.defaultHeaders,
-      ...options?.headers,
-    };
-
-    const resp = await this.fetchFn(url, {
-      method: "GET",
-      headers,
-      signal: options?.signal,
-    });
-
-    if (!resp.ok) {
-      return this.handleError(resp);
-    }
-
-    return await resp.json() as ListDrugApprovalsResponse;
   }
 
   private async handleError(resp: Response): Promise<never> {

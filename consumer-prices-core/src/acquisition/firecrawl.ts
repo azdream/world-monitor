@@ -100,6 +100,9 @@ export class FirecrawlProvider implements AcquisitionProvider {
         includeDomains: opts.includeDomains,
         scrapeOptions: { formats: ['markdown'] },
       }),
+      // Same bound as fetch/extract: a wedged provider connection must not
+      // eat the whole run budget for one retailer.
+      signal: AbortSignal.timeout(30_000),
     });
 
     if (!resp.ok) throw new Error(`Firecrawl search failed: HTTP ${resp.status}`);
@@ -168,14 +171,23 @@ export class FirecrawlProvider implements AcquisitionProvider {
       throw new Error(`Firecrawl extract error: ${data.error ?? 'unknown'}`);
     }
 
+    const metadata = data.data?.metadata ?? {};
+    const pageTitle = [metadata['og:title'], metadata.ogTitle, metadata['twitter:title']].find(
+      (value): value is string => typeof value === 'string' && value.trim() !== '',
+    );
+
     return {
       url,
       data: (data.data?.extract ?? {}) as T,
       provider: this.name,
       fetchedAt: new Date(),
+      ...(typeof data.data?.metadata?.statusCode === 'number'
+        ? { sourceStatusCode: data.data.metadata.statusCode }
+        : {}),
       ...(typeof data.data?.markdown === 'string' && data.data.markdown.trim()
         ? { pageContent: data.data.markdown }
         : {}),
+      ...(pageTitle ? { pageTitle: pageTitle.trim() } : {}),
     };
   }
 
