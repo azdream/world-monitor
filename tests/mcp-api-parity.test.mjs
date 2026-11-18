@@ -246,7 +246,11 @@ const EXCLUDED_FROM_MCP_PARITY = new Map([
   ["POST /api/economic/v1/get-fred-series-batch",
     "manual-mapping: parameterized cache key not statically resolvable — equivalent data covered by sibling cache tool at the prefix level"],
 
-  // === deferred-to-future-tool (54) ===
+  // === deferred-to-future-tool (56) ===
+  ["GET /api/pharma/v1/list-drug-approvals",
+    "deferred-to-future-tool: pure read of pharma:drug-pipeline:v1 (recent FDA NDA/BLA approvals) — bundle into a future get_drug_pipeline tool"],
+  ["GET /api/pharma/v1/list-drug-pipeline",
+    "deferred-to-future-tool: pure read of pharma:drug-pipeline:v1 with in-memory modality/area filters — bundle into a future get_drug_pipeline tool"],
   ["GET /api/consumer-prices/v1/get-consumer-price-basket-series",
     "deferred-to-future-tool: handler reads parameterized consumer-prices:basket-series:<market>:<basket>:<range> key NOT in get_consumer_prices._coverageKeys — bundle into a future expanded_consumer_prices tool that exposes the basket-series time series"],
   // NOTE: risk-scores was previously mis-classified as deferred-to-future-tool.

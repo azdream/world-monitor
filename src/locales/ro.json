@@ -1941,6 +1941,56 @@
       },
       "methodologyNote": "Nivelurile Alert / Warning / Watch provin dintr-un clasificator de cuvinte cheie editorial — consultați /docs/methodology/disease-alert-level pentru tabelul de cuvinte cheie și limitări."
     },
+    "drugPipeline": {
+      "infoTooltip": "<strong>Pipeline de Medicamente</strong> Studii de fază 3 sponsorizate de industrie, grupate după primul trimestru în care ar putea veni o decizie de reglementare, plus aprobările originale recente ale FDA. Ferestrele de decizie sunt estimări derivate din data finalizării primare a fiecărui studiu, nu date anunțate. Surse: ClinicalTrials.gov, openFDA, ChEMBL.",
+      "title": "Pipeline de Medicamente",
+      "tabs": {
+        "pipeline": "Pipeline",
+        "approvals": "Aprobări recente"
+      },
+      "allModalities": "Toate tipurile de medicamente",
+      "allAreas": "Toate ariile terapeutice",
+      "novelOnly": "Doar medicamente noi (ascunde extinderile de indicație)",
+      "newDrug": "NOU",
+      "labelExpansion": "EXTINDERE",
+      "priorityReview": "PRIORITAR",
+      "estimatedWindow": "Decizie est. {{window}}",
+      "completedOn": "Studiu încheiat {{date}}",
+      "completionExpected": "Sfârșit studiu {{date}}",
+      "earliestFrom": "CEL MAI DEVREME {{quarter}}",
+      "showingOf": "Se afișează cele mai apropiate {{shown}} din {{total}} studii",
+      "totalTrials": "Studii: {{total}}",
+      "noMatches": "Nicio intrare nu corespunde filtrelor",
+      "disclaimer": "Ferestrele estimate presupun 4–10 luni de la finalizarea primară până la depunere și o evaluare de 6–12 luni. Studiile pot eșua sau întârzia, iar o dată de decizie anunțată de sponsor prevalează întotdeauna asupra acestei estimări.",
+      "approvalsNote": "Aprobări originale NDA și BLA din Drugs@FDA din ultimele 180 de zile. Vaccinurile și terapiile celulare sau genice reglementate de CBER nu sunt incluse.",
+      "modality": {
+        "small_molecule": "Moleculă mică",
+        "antibody": "Anticorp",
+        "adc": "ADC",
+        "cell_therapy": "Terapie celulară",
+        "gene_therapy": "Terapie genică",
+        "rna": "RNA",
+        "vaccine": "Vaccin",
+        "peptide_protein": "Peptidă / proteină",
+        "other": "Altele"
+      },
+      "area": {
+        "oncology": "Oncologie",
+        "metabolic": "Metabolic",
+        "neurology": "Neurologie",
+        "cardiovascular": "Cardiovascular",
+        "immunology": "Imunologie",
+        "infectious": "Boli infecțioase",
+        "respiratory": "Respirator",
+        "psychiatry": "Psihiatrie",
+        "hematology": "Hematologie",
+        "other": "Altele"
+      },
+      "errors": {
+        "noData": "Nu există date despre pipeline",
+        "failedToLoad": "Încărcare eșuată"
+      }
+    },
     "earningsCalendar": {
       "infoTooltip": "<strong>Calendar de rezultate</strong> Publicări viitoare și recente ale rezultatelor companiilor mari listate. Afișează estimările EPS vs. reale, venituri și clasificare depășire/ratare. Sursă: furnizori de date financiare.",
       "title": "Calendar de Câștiguri",

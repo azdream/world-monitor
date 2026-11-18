@@ -1933,6 +1933,56 @@
       },
       "methodologyNote": "Uyarı / Dikkat / İzleme seviyeleri editöryel anahtar kelime sınıflandırıcısından gelir — anahtar kelime tablosu ve sınırlamalar için /docs/methodology/disease-alert-level bölümüne bakın."
     },
+    "drugPipeline": {
+      "infoTooltip": "<strong>İlaç Geliştirme Hattı</strong> Sektör destekli Faz 3 çalışmaları, düzenleyici kararın çıkabileceği en erken çeyreğe göre gruplanır; ayrıca son FDA ilk onayları gösterilir. Karar pencereleri, her çalışmanın birincil tamamlanma tarihinden türetilen tahminlerdir, duyurulmuş tarihler değildir. Kaynaklar: ClinicalTrials.gov, openFDA, ChEMBL.",
+      "title": "İlaç Geliştirme Hattı",
+      "tabs": {
+        "pipeline": "Geliştirme hattı",
+        "approvals": "Son onaylar"
+      },
+      "allModalities": "Tüm ilaç türleri",
+      "allAreas": "Tüm tedavi alanları",
+      "novelOnly": "Yalnızca yeni ilaçlar (endikasyon genişletmelerini gizle)",
+      "newDrug": "YENİ",
+      "labelExpansion": "GENİŞLETME",
+      "priorityReview": "ÖNCELİKLİ",
+      "estimatedWindow": "Tahmini karar {{window}}",
+      "completedOn": "Çalışma bitti {{date}}",
+      "completionExpected": "Çalışma bitişi {{date}}",
+      "earliestFrom": "EN ERKEN {{quarter}}",
+      "showingOf": "{{total}} çalışmadan en yakın {{shown}} tanesi gösteriliyor",
+      "totalTrials": "{{total}} çalışma",
+      "noMatches": "Bu filtrelerle eşleşen kayıt yok",
+      "disclaimer": "Tahmini pencereler, birincil tamamlanmadan başvuruya kadar 4–10 ay ve 6–12 aylık bir inceleme süresi varsayar. Çalışmalar başarısız olabilir veya gecikebilir; sponsorun duyurduğu karar tarihi her zaman bu tahminin önüne geçer.",
+      "approvalsNote": "Son 180 günde Drugs@FDA'daki ilk NDA ve BLA onayları. CBER'in düzenlediği aşılar ile hücre ve gen tedavileri dahil değildir.",
+      "modality": {
+        "small_molecule": "Küçük molekül",
+        "antibody": "Antikor",
+        "adc": "ADC",
+        "cell_therapy": "Hücre tedavisi",
+        "gene_therapy": "Gen tedavisi",
+        "rna": "RNA",
+        "vaccine": "Aşı",
+        "peptide_protein": "Peptit / protein",
+        "other": "Diğer"
+      },
+      "area": {
+        "oncology": "Onkoloji",
+        "metabolic": "Metabolik",
+        "neurology": "Nöroloji",
+        "cardiovascular": "Kardiyovasküler",
+        "immunology": "İmmünoloji",
+        "infectious": "Enfeksiyon hastalıkları",
+        "respiratory": "Solunum",
+        "psychiatry": "Psikiyatri",
+        "hematology": "Hematoloji",
+        "other": "Diğer"
+      },
+      "errors": {
+        "noData": "İlaç geliştirme verisi yok",
+        "failedToLoad": "Yüklenemedi"
+      }
+    },
     "earningsCalendar": {
       "infoTooltip": "<strong>Kazanç Takvimi</strong> Büyük halka açık şirketlerin yaklaşan ve son kazanç açıklamaları. EPS tahminlerini gerçekle karşılaştırır, gelir ve beklenti aşma/kaçırma sınıflandırması gösterir. Kaynak: finansal veri sağlayıcıları.",
       "title": "Kazanç Takvimi",

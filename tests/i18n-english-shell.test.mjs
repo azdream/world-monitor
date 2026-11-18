@@ -8,7 +8,9 @@ const APP_SOURCE = 'src/App.ts';
 const EN_LOCALE = 'src/locales/en.json';
 const EN_SHELL_LOCALE = 'src/locales/en.shell.json';
 const COMPONENTS_DIR = 'src/components';
-const SHELL_BUDGET_BYTES = 50 * 1024;
+// Raised 50 → 51 KiB when the drug-pipeline panel's title/infoTooltip joined the
+// shell: the previous budget had 69 bytes of headroom, less than any new panel needs.
+const SHELL_BUDGET_BYTES = 51 * 1024;
 
 function tsFilesUnder(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

@@ -69,6 +69,7 @@ import type { MacroTilesPanel } from '@/components/MacroTilesPanel';
 import type { FSIPanel } from '@/components/FSIPanel';
 import type { YieldCurvePanel } from '@/components/YieldCurvePanel';
 import type { EarningsCalendarPanel } from '@/components/EarningsCalendarPanel';
+import type { DrugPipelinePanel } from '@/components/DrugPipelinePanel';
 import type { EconomicCalendarPanel } from '@/components/EconomicCalendarPanel';
 import type { CotPositioningPanel } from '@/components/CotPositioningPanel';
 import type { LiquidityShiftsPanel } from '@/components/LiquidityShiftsPanel';
@@ -532,6 +533,10 @@ export class App {
     if (shouldPrime('earnings-calendar')) {
       const panel = this.state.panels['earnings-calendar'] as EarningsCalendarPanel | undefined;
       if (panel) primeTask('earnings-calendar', () => panel.fetchData());
+    }
+    if (shouldPrime('drug-pipeline')) {
+      const panel = this.state.panels['drug-pipeline'] as DrugPipelinePanel | undefined;
+      if (panel) primeTask('drug-pipeline', () => panel.fetchData());
     }
     if (shouldPrime('economic-calendar')) {
       const panel = this.state.panels['economic-calendar'] as EconomicCalendarPanel | undefined;
@@ -2330,6 +2335,12 @@ export class App {
       () => (this.state.panels['yield-curve'] as YieldCurvePanel).fetchData(),
       REFRESH_INTERVALS.yieldCurve,
       () => this.isPanelNearViewport('yield-curve')
+    );
+    this.refreshScheduler.scheduleRefresh(
+      'drug-pipeline',
+      () => (this.state.panels['drug-pipeline'] as DrugPipelinePanel).fetchData(),
+      REFRESH_INTERVALS.drugPipeline,
+      () => this.isPanelNearViewport('drug-pipeline')
     );
     this.refreshScheduler.scheduleRefresh(
       'earnings-calendar',

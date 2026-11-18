@@ -1949,6 +1949,56 @@
       },
       "methodologyNote": "Úrovně Alert / Warning / Watch pocházejí z redakčního klíčového slova klasifikátoru — viz /docs/methodology/disease-alert-level pro tabulku klíčových slov a omezení."
     },
+    "drugPipeline": {
+      "infoTooltip": "<strong>Vývoj léků</strong> Klinické studie fáze 3 sponzorované průmyslem, seskupené podle nejbližšího čtvrtletí, kdy může padnout regulační rozhodnutí, a nedávná původní schválení FDA. Okna rozhodnutí jsou odhady odvozené od data primárního dokončení každé studie, nikoli oznámené termíny. Zdroje: ClinicalTrials.gov, openFDA, ChEMBL.",
+      "title": "Vývoj léků",
+      "tabs": {
+        "pipeline": "Ve vývoji",
+        "approvals": "Nedávná schválení"
+      },
+      "allModalities": "Všechny typy léků",
+      "allAreas": "Všechny terapeutické oblasti",
+      "novelOnly": "Pouze nové léky (skrýt rozšíření indikací)",
+      "newDrug": "NOVÝ",
+      "labelExpansion": "ROZŠÍŘENÍ",
+      "priorityReview": "PRIORITNÍ",
+      "estimatedWindow": "Odhad rozhodnutí {{window}}",
+      "completedOn": "Studie dokončena {{date}}",
+      "completionExpected": "Konec studie {{date}}",
+      "earliestFrom": "NEJDŘÍVE {{quarter}}",
+      "showingOf": "Zobrazeno nejbližších {{shown}} z {{total}} studií",
+      "totalTrials": "Studií: {{total}}",
+      "noMatches": "Filtrům neodpovídají žádné položky",
+      "disclaimer": "Odhadovaná okna počítají se 4–10 měsíci od primárního dokončení do podání žádosti a s 6–12 měsíci posuzování. Studie mohou selhat nebo se zpozdit a datum rozhodnutí oznámené sponzorem má vždy přednost před tímto odhadem.",
+      "approvalsNote": "Původní schválení NDA a BLA z Drugs@FDA za posledních 180 dní. Vakcíny a buněčné či genové terapie regulované CBER nejsou zahrnuty.",
+      "modality": {
+        "small_molecule": "Malá molekula",
+        "antibody": "Protilátka",
+        "adc": "ADC",
+        "cell_therapy": "Buněčná terapie",
+        "gene_therapy": "Genová terapie",
+        "rna": "RNA",
+        "vaccine": "Vakcína",
+        "peptide_protein": "Peptid / protein",
+        "other": "Ostatní"
+      },
+      "area": {
+        "oncology": "Onkologie",
+        "metabolic": "Metabolismus",
+        "neurology": "Neurologie",
+        "cardiovascular": "Kardiovaskulární",
+        "immunology": "Imunologie",
+        "infectious": "Infekční nemoci",
+        "respiratory": "Dýchací cesty",
+        "psychiatry": "Psychiatrie",
+        "hematology": "Hematologie",
+        "other": "Ostatní"
+      },
+      "errors": {
+        "noData": "Žádná data o vývoji léků",
+        "failedToLoad": "Selhalo načítání"
+      }
+    },
     "earningsCalendar": {
       "infoTooltip": "<strong>Kalendář výsledků</strong> Nadcházející a nedávné výsledkové zprávy velkých veřejných společností. Zobrazuje odhady EPS vs. skutečnost, tržby a klasifikaci překonání/nesplnění. Zdroj: poskytovatelé finančních dat.",
       "title": "Kalendář výsledků",

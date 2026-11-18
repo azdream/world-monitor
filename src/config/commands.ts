@@ -192,6 +192,7 @@ export const COMMANDS: Command[] = [
   { id: 'panel:national-debt', keywords: ['national debt', 'debt clock', 'government debt', 'deficit'], label: 'Panel: National Debt Clock', icon: '\u{1F4B8}', category: 'panels' },
   { id: 'panel:fsi', keywords: ['fsi', 'financial stress', 'financial stress indicator', 'systemic risk'], label: 'Panel: Financial Stress Indicator', icon: '\u{1F4C9}', category: 'panels' },
   { id: 'panel:yield-curve', keywords: ['yield curve', 'rates', 'treasury', 'ecb rates', 'bond yield', 'inversion'], label: 'Panel: Yield Curve & Rates', icon: '\u{1F4C8}', category: 'panels' },
+  { id: 'panel:drug-pipeline', keywords: ['drug pipeline', 'pharma', 'clinical trials', 'fda approvals', 'new drugs', 'biotech', 'phase 3'], label: 'Panel: Drug Pipeline', icon: '\u{1F48A}', category: 'panels' },
   { id: 'panel:earnings-calendar', keywords: ['earnings', 'earnings calendar', 'eps', 'quarterly results'], label: 'Panel: Earnings Calendar', icon: '\u{1F4C5}', category: 'panels' },
   { id: 'panel:economic-calendar', keywords: ['economic calendar', 'macro events', 'nonfarm payrolls', 'gdp release', 'fomc'], label: 'Panel: Economic Calendar', icon: '\u{1F4C6}', category: 'panels' },
   { id: 'panel:cot-positioning', keywords: ['cot', 'cot positioning', 'commitments of traders', 'futures positioning', 'cftc'], label: 'Panel: CFTC COT Positioning', icon: '\u{1F4CA}', category: 'panels' },

@@ -16006,6 +16006,215 @@ paths:
                                 oneOf:
                                     - $ref: '#/components/schemas/Error'
                                     - $ref: '#/components/schemas/GatewayError'
+    /api/pharma/v1/list-drug-pipeline:
+        get:
+            tags:
+                - PharmaService
+            summary: ListDrugPipeline
+            description: |-
+                ListDrugPipeline returns late-stage industry drug trials with an expected
+                 regulatory decision window, filterable by modality and therapeutic area.
+            operationId: ListDrugPipeline
+            parameters:
+                - name: modality
+                  in: query
+                  description: Filter by modality value; empty = all.
+                  required: false
+                  example: "example"
+                  schema:
+                    type: string
+                - name: therapeutic_area
+                  in: query
+                  description: Filter by therapeutic_area value; empty = all.
+                  required: false
+                  example: "example"
+                  schema:
+                    type: string
+                - name: novel_only
+                  in: query
+                  description: When true, only entries whose candidate is not yet approved.
+                  required: false
+                  example: true
+                  schema:
+                    type: boolean
+                - name: limit
+                  in: query
+                  description: Max entries to return (default 200, max 500).
+                  required: false
+                  example: 25
+                  schema:
+                    type: integer
+                    format: int32
+                - name: jmespath
+                  in: query
+                  description: |-
+                    Optional JMESPath expression applied server-side to project or reduce the JSON response before it is returned (mirrors the MCP jmespath argument). Invalid expressions, expressions larger than 1024 UTF-8 bytes, or projections that exceed the 256 KB output cap return HTTP 400 with a {_jmespath_error, original_keys} envelope. Grammar and worked examples: https://www.worldmonitor.app/docs/mcp-jmespath.
+                  required: false
+                  example: "keys(@)"
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            example:
+                                "areaCounts":
+                                    - "count": 1
+                                      "key": "example"
+                                "entries":
+                                    - "candidate": "2026-01-15"
+                                      "conditions":
+                                          - "example"
+                                      "enrollment": 1
+                                      "expectedDecisionFrom": "example"
+                                      "expectedDecisionTo": "example"
+                                "generatedAt": "2026-01-15T12:00:00Z"
+                                "modalityCounts":
+                                    - "count": 1
+                                      "key": "example"
+                                "total": 1
+                            schema:
+                                $ref: '#/components/schemas/worldmonitor_pharma_v1_ListDrugPipelineResponse'
+                "400":
+                    description: Validation error
+                    content:
+                        application/json:
+                            schema:
+                                oneOf:
+                                    - $ref: '#/components/schemas/ValidationError'
+                                    - $ref: '#/components/schemas/JmespathProjectionError'
+                "401":
+                    description: Missing or invalid API key.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedError'
+                "403":
+                    description: API access requires an active subscription (the API key's subscription is inactive or expired).
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenError'
+                "429":
+                    description: Rate limit exceeded.
+                    headers:
+                        X-RateLimit-Limit:
+                            description: Maximum requests allowed in the active rate-limit window.
+                            schema:
+                                type: string
+                        X-RateLimit-Remaining:
+                            description: Requests remaining in the active rate-limit window.
+                            schema:
+                                type: string
+                        X-RateLimit-Reset:
+                            description: Unix epoch milliseconds when the active rate-limit window resets.
+                            schema:
+                                type: string
+                        Retry-After:
+                            description: Seconds to wait before retrying the request.
+                            schema:
+                                type: string
+                    content:
+                        application/json:
+                            schema:
+                                oneOf:
+                                    - $ref: '#/components/schemas/Error'
+                                    - $ref: '#/components/schemas/RateLimitError'
+                default:
+                    description: Gateway or handler error response.
+                    content:
+                        application/json:
+                            schema:
+                                oneOf:
+                                    - $ref: '#/components/schemas/Error'
+                                    - $ref: '#/components/schemas/GatewayError'
+    /api/pharma/v1/list-drug-approvals:
+        get:
+            tags:
+                - PharmaService
+            summary: ListDrugApprovals
+            description: ListDrugApprovals returns recent original FDA approvals (NDA/BLA).
+            operationId: ListDrugApprovals
+            parameters:
+                - name: jmespath
+                  in: query
+                  description: |-
+                    Optional JMESPath expression applied server-side to project or reduce the JSON response before it is returned (mirrors the MCP jmespath argument). Invalid expressions, expressions larger than 1024 UTF-8 bytes, or projections that exceed the 256 KB output cap return HTTP 400 with a {_jmespath_error, original_keys} envelope. Grammar and worked examples: https://www.worldmonitor.app/docs/mcp-jmespath.
+                  required: false
+                  example: "keys(@)"
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: Successful response
+                    content:
+                        application/json:
+                            example:
+                                "approvals":
+                                    - "applicationNumber": "example"
+                                      "applicationType": "all"
+                                      "approvalDate": "2026-01-15"
+                                      "brandName": "WorldMonitor Analyst"
+                                      "genericName": "WorldMonitor Analyst"
+                                "generatedAt": "2026-01-15T12:00:00Z"
+                                "total": 1
+                                "unavailable": true
+                            schema:
+                                $ref: '#/components/schemas/worldmonitor_pharma_v1_ListDrugApprovalsResponse'
+                "400":
+                    description: Validation error
+                    content:
+                        application/json:
+                            schema:
+                                oneOf:
+                                    - $ref: '#/components/schemas/ValidationError'
+                                    - $ref: '#/components/schemas/JmespathProjectionError'
+                "401":
+                    description: Missing or invalid API key.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedError'
+                "403":
+                    description: API access requires an active subscription (the API key's subscription is inactive or expired).
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenError'
+                "429":
+                    description: Rate limit exceeded.
+                    headers:
+                        X-RateLimit-Limit:
+                            description: Maximum requests allowed in the active rate-limit window.
+                            schema:
+                                type: string
+                        X-RateLimit-Remaining:
+                            description: Requests remaining in the active rate-limit window.
+                            schema:
+                                type: string
+                        X-RateLimit-Reset:
+                            description: Unix epoch milliseconds when the active rate-limit window resets.
+                            schema:
+                                type: string
+                        Retry-After:
+                            description: Seconds to wait before retrying the request.
+                            schema:
+                                type: string
+                    content:
+                        application/json:
+                            schema:
+                                oneOf:
+                                    - $ref: '#/components/schemas/Error'
+                                    - $ref: '#/components/schemas/RateLimitError'
+                default:
+                    description: Gateway or handler error response.
+                    content:
+                        application/json:
+                            schema:
+                                oneOf:
+                                    - $ref: '#/components/schemas/Error'
+                                    - $ref: '#/components/schemas/GatewayError'
     /api/positive-events/v1/list-positive-geo-events:
         get:
             tags:
@@ -33329,6 +33538,194 @@ components:
                         - STORY_PHASE_FADING
                     description: StoryPhase represents the lifecycle stage of a tracked news story.
             description: StoryMeta carries cross-cycle persistence data attached to each news item.
+        worldmonitor_pharma_v1_ListDrugPipelineRequest:
+            type: object
+            properties:
+                modality:
+                    type: string
+                    description: Filter by modality value; empty = all.
+                therapeuticArea:
+                    type: string
+                    description: Filter by therapeutic_area value; empty = all.
+                novelOnly:
+                    type: boolean
+                    description: When true, only entries whose candidate is not yet approved.
+                limit:
+                    type: integer
+                    format: int32
+                    description: Max entries to return (default 200, max 500).
+        worldmonitor_pharma_v1_ListDrugPipelineResponse:
+            type: object
+            properties:
+                entries:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/worldmonitor_pharma_v1_DrugPipelineEntry'
+                total:
+                    type: integer
+                    format: int32
+                    description: Entries matching the filters before the limit was applied.
+                modalityCounts:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/worldmonitor_pharma_v1_PipelineFacetCount'
+                areaCounts:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/worldmonitor_pharma_v1_PipelineFacetCount'
+                generatedAt:
+                    type: string
+                    description: ISO-8601 timestamp of the seed run that produced the data.
+                unavailable:
+                    type: boolean
+                    description: |-
+                        True when the seed-backed dataset is unavailable; empty payload fields are
+                         graceful degradation, not confirmed zero data.
+        worldmonitor_pharma_v1_DrugPipelineEntry:
+            type: object
+            properties:
+                nctId:
+                    type: string
+                    description: ClinicalTrials.gov registry identifier (e.g. "NCT01234567").
+                title:
+                    type: string
+                    description: Brief trial title.
+                candidate:
+                    type: string
+                    description: |-
+                        Lead investigational intervention (first intervention that is not a
+                         placebo and, when one exists, not an already-approved drug).
+                interventions:
+                    type: array
+                    items:
+                        type: string
+                        description: All non-placebo intervention names in the trial.
+                sponsor:
+                    type: string
+                    description: Lead sponsor name.
+                phase:
+                    type: string
+                    description: 'Trial phase: "PHASE3" | "PHASE2_PHASE3".'
+                status:
+                    type: string
+                    description: ClinicalTrials.gov overall status (e.g. "RECRUITING").
+                modality:
+                    type: string
+                    description: |-
+                        Drug modality: "small_molecule" | "antibody" | "adc" | "cell_therapy" |
+                         "gene_therapy" | "rna" | "vaccine" | "peptide_protein" | "other".
+                modalitySource:
+                    type: string
+                    description: 'How modality was determined: "chembl" | "name" | "intervention_type".'
+                therapeuticArea:
+                    type: string
+                    description: |-
+                        Therapeutic area: "oncology" | "metabolic" | "neurology" | "cardiovascular" |
+                         "immunology" | "infectious" | "respiratory" | "psychiatry" | "hematology" |
+                         "other".
+                conditions:
+                    type: array
+                    items:
+                        type: string
+                        description: Conditions studied, as registered.
+                primaryCompletionDate:
+                    type: string
+                    description: Primary completion date, "YYYY-MM-DD" or "YYYY-MM" as registered.
+                primaryCompletionActual:
+                    type: boolean
+                    description: True when the primary completion date is actual rather than anticipated.
+                expectedDecisionFrom:
+                    type: string
+                    description: |-
+                        Earliest estimated month of a regulatory decision, "YYYY-MM". This is a
+                         heuristic (primary completion + filing lag + review clock), not a
+                         regulator- or sponsor-announced date.
+                expectedDecisionTo:
+                    type: string
+                    description: Latest estimated month of a regulatory decision, "YYYY-MM".
+                novel:
+                    type: boolean
+                    description: |-
+                        True when the candidate is not yet an approved drug (new drug rather than
+                         a label expansion of an approved one).
+                enrollment:
+                    type: integer
+                    format: int32
+                    description: Planned or actual enrollment (0 = unknown).
+                sourceUrl:
+                    type: string
+                    description: ClinicalTrials.gov study URL.
+            description: |-
+                DrugPipelineEntry is one late-stage clinical trial and its estimated
+                 regulatory decision window.
+        worldmonitor_pharma_v1_PipelineFacetCount:
+            type: object
+            properties:
+                key:
+                    type: string
+                    description: Category key (a modality or therapeutic_area value).
+                count:
+                    type: integer
+                    format: int32
+                    description: Entries in this category.
+            description: |-
+                PipelineFacetCount is the number of pipeline entries in one category,
+                 computed before modality/area filters are applied.
+        worldmonitor_pharma_v1_ListDrugApprovalsRequest:
+            type: object
+        worldmonitor_pharma_v1_ListDrugApprovalsResponse:
+            type: object
+            properties:
+                approvals:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/worldmonitor_pharma_v1_DrugApproval'
+                total:
+                    type: integer
+                    format: int32
+                    description: Number of approvals returned.
+                generatedAt:
+                    type: string
+                    description: ISO-8601 timestamp of the seed run that produced the data.
+                unavailable:
+                    type: boolean
+                    description: |-
+                        True when the seed-backed dataset is unavailable; empty payload fields are
+                         graceful degradation, not confirmed zero data.
+        worldmonitor_pharma_v1_DrugApproval:
+            type: object
+            properties:
+                applicationNumber:
+                    type: string
+                    description: FDA application number (e.g. "NDA215123", "BLA761234").
+                brandName:
+                    type: string
+                    description: Brand name (may be empty shortly after approval).
+                genericName:
+                    type: string
+                    description: Generic / active ingredient name.
+                sponsor:
+                    type: string
+                    description: Applicant name.
+                approvalDate:
+                    type: string
+                    description: Approval date, "YYYY-MM-DD".
+                applicationType:
+                    type: string
+                    description: 'Application type: "NDA" | "BLA".'
+                reviewPriority:
+                    type: string
+                    description: 'Review priority as reported by FDA: "PRIORITY" | "STANDARD" | "".'
+                newMolecularEntity:
+                    type: boolean
+                    description: True for a new molecular entity (NDA Type 1) or any original BLA.
+                modality:
+                    type: string
+                    description: Drug modality (same vocabulary as DrugPipelineEntry.modality).
+                route:
+                    type: string
+                    description: Administration route (e.g. "ORAL"), when known.
+            description: DrugApproval is one original FDA marketing approval (NDA or BLA).
         worldmonitor_positive_events_v1_ListPositiveGeoEventsRequest:
             type: object
         worldmonitor_positive_events_v1_ListPositiveGeoEventsResponse:

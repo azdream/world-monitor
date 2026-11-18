@@ -1677,6 +1677,56 @@
       },
       "methodologyNote": "Nivåerna Alert / Warning / Watch kommer från en redaktionell nyckelordklassificerare — se /docs/methodology/disease-alert-level för nyckelordstabellen och begränsningarna."
     },
+    "drugPipeline": {
+      "infoTooltip": "<strong>Läkemedelspipeline</strong> Industrisponsrade fas 3-studier grupperade efter det tidigaste kvartal då ett regulatoriskt beslut kan komma, samt nyligen beviljade ursprungliga FDA-godkännanden. Beslutsfönstren är uppskattningar baserade på varje studies primära slutdatum, inte tillkännagivna datum. Källor: ClinicalTrials.gov, openFDA, ChEMBL.",
+      "title": "Läkemedelspipeline",
+      "tabs": {
+        "pipeline": "Pipeline",
+        "approvals": "Senaste godkännanden"
+      },
+      "allModalities": "Alla läkemedelstyper",
+      "allAreas": "Alla terapiområden",
+      "novelOnly": "Endast nya läkemedel (dölj utökade indikationer)",
+      "newDrug": "NY",
+      "labelExpansion": "UTÖKNING",
+      "priorityReview": "PRIORITET",
+      "estimatedWindow": "Beräknat beslut {{window}}",
+      "completedOn": "Studie klar {{date}}",
+      "completionExpected": "Studie slutar {{date}}",
+      "earliestFrom": "TIDIGAST {{quarter}}",
+      "showingOf": "Visar de närmaste {{shown}} av {{total}} studier",
+      "totalTrials": "{{total}} studier",
+      "noMatches": "Inga poster matchar dessa filter",
+      "disclaimer": "Uppskattade fönster förutsätter 4–10 månader från primärt slutdatum till ansökan och 6–12 månaders granskning. Studier kan misslyckas eller försenas, och ett beslutsdatum som sponsorn har meddelat gäller alltid före denna uppskattning.",
+      "approvalsNote": "Ursprungliga NDA- och BLA-godkännanden från Drugs@FDA under de senaste 180 dagarna. Vacciner samt cell- och genterapier som regleras av CBER ingår inte.",
+      "modality": {
+        "small_molecule": "Liten molekyl",
+        "antibody": "Antikropp",
+        "adc": "ADC",
+        "cell_therapy": "Cellterapi",
+        "gene_therapy": "Genterapi",
+        "rna": "RNA",
+        "vaccine": "Vaccin",
+        "peptide_protein": "Peptid / protein",
+        "other": "Övrigt"
+      },
+      "area": {
+        "oncology": "Onkologi",
+        "metabolic": "Metabolism",
+        "neurology": "Neurologi",
+        "cardiovascular": "Hjärta-kärl",
+        "immunology": "Immunologi",
+        "infectious": "Infektionssjukdomar",
+        "respiratory": "Luftvägar",
+        "psychiatry": "Psykiatri",
+        "hematology": "Hematologi",
+        "other": "Övrigt"
+      },
+      "errors": {
+        "noData": "Inga pipelinedata tillgängliga",
+        "failedToLoad": "Misslyckades att ladda"
+      }
+    },
     "earningsCalendar": {
       "infoTooltip": "<strong>Resultatkalender</strong> Kommande och senaste resultatpubliceringar för stora börsnoterade företag. Visar EPS-estimat vs. faktiska, intäkter och klassificering överträffad/missad. Källa: finansiella dataleverantörer.",
       "title": "Vinstkalender",

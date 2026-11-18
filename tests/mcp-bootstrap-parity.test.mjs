@@ -294,6 +294,8 @@ const EXCLUDED_FROM_MCP = new Map([
     'deferred: EURIBOR 6-month rate (single FRED series). Future expanded rates tool.'],
   ['economic:fred:v1:EURIBOR1Y:0',
     'deferred: EURIBOR 1-year rate (single FRED series). Future expanded rates tool.'],
+  ['pharma:drug-pipeline:v1',
+    'deferred: Phase 3 drug pipeline + recent FDA approvals (seed-drug-pipeline.mjs). Future get_drug_pipeline tool; served today by /api/pharma/v1.'],
   ['health:vpd-tracker:realtime:v1',
     'deferred: vaccine-preventable disease tracker (realtime); covered partially by disease-outbreaks already in get_health_signals. Future expanded health tool would bundle the VPD-specific series.'],
   ['health:vpd-tracker:historical:v1',

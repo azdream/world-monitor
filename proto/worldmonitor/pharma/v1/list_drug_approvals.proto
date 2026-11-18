@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package worldmonitor.pharma.v1;
+
+// DrugApproval is one original FDA marketing approval (NDA or BLA).
+message DrugApproval {
+  // FDA application number (e.g. "NDA215123", "BLA761234").
+  string application_number = 1;
+  // Brand name (may be empty shortly after approval).
+  string brand_name = 2;
+  // Generic / active ingredient name.
+  string generic_name = 3;
+  // Applicant name.
+  string sponsor = 4;
+  // Approval date, "YYYY-MM-DD".
+  string approval_date = 5;
+  // Application type: "NDA" | "BLA".
+  string application_type = 6;
+  // Review priority as reported by FDA: "PRIORITY" | "STANDARD" | "".
+  string review_priority = 7;
+  // True for a new molecular entity (NDA Type 1) or any original BLA.
+  bool new_molecular_entity = 8;
+  // Drug modality (same vocabulary as DrugPipelineEntry.modality).
+  string modality = 9;
+  // Administration route (e.g. "ORAL"), when known.
+  string route = 10;
+}
+
+message ListDrugApprovalsRequest {}
+
+message ListDrugApprovalsResponse {
+  // Approvals ordered by approval_date descending.
+  repeated DrugApproval approvals = 1;
+  // Number of approvals returned.
+  int32 total = 2;
+  // ISO-8601 timestamp of the seed run that produced the data.
+  string generated_at = 3;
+  // True when the seed-backed dataset is unavailable; empty payload fields are
+  // graceful degradation, not confirmed zero data.
+  bool unavailable = 4;
+}

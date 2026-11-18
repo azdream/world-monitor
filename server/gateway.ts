@@ -354,6 +354,8 @@ const RPC_CACHE_TIER: Record<string, CacheTier> = {
   '/api/scenario/v1/get-scenario-status': 'slow-browser',
   '/api/health/v1/list-disease-outbreaks': 'slow',
   '/api/health/v1/list-air-quality-alerts': 'fast',
+  '/api/pharma/v1/list-drug-pipeline': 'slow',
+  '/api/pharma/v1/list-drug-approvals': 'slow',
   '/api/intelligence/v1/get-social-velocity': 'fast',
   '/api/intelligence/v1/get-country-energy-profile': 'slow',
   '/api/intelligence/v1/compute-energy-shock': 'fast',

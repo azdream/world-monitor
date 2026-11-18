@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package worldmonitor.pharma.v1;
+
+import "sebuf/http/annotations.proto";
+
+// DrugPipelineEntry is one late-stage clinical trial and its estimated
+// regulatory decision window.
+message DrugPipelineEntry {
+  // ClinicalTrials.gov registry identifier (e.g. "NCT01234567").
+  string nct_id = 1;
+  // Brief trial title.
+  string title = 2;
+  // Lead investigational intervention (first intervention that is not a
+  // placebo and, when one exists, not an already-approved drug).
+  string candidate = 3;
+  // All non-placebo intervention names in the trial.
+  repeated string interventions = 4;
+  // Lead sponsor name.
+  string sponsor = 5;
+  // Trial phase: "PHASE3" | "PHASE2_PHASE3".
+  string phase = 6;
+  // ClinicalTrials.gov overall status (e.g. "RECRUITING").
+  string status = 7;
+  // Drug modality: "small_molecule" | "antibody" | "adc" | "cell_therapy" |
+  // "gene_therapy" | "rna" | "vaccine" | "peptide_protein" | "other".
+  string modality = 8;
+  // How modality was determined: "chembl" | "name" | "intervention_type".
+  string modality_source = 9;
+  // Therapeutic area: "oncology" | "metabolic" | "neurology" | "cardiovascular" |
+  // "immunology" | "infectious" | "respiratory" | "psychiatry" | "hematology" |
+  // "other".
+  string therapeutic_area = 10;
+  // Conditions studied, as registered.
+  repeated string conditions = 11;
+  // Primary completion date, "YYYY-MM-DD" or "YYYY-MM" as registered.
+  string primary_completion_date = 12;
+  // True when the primary completion date is actual rather than anticipated.
+  bool primary_completion_actual = 13;
+  // Earliest estimated month of a regulatory decision, "YYYY-MM". This is a
+  // heuristic (primary completion + filing lag + review clock), not a
+  // regulator- or sponsor-announced date.
+  string expected_decision_from = 14;
+  // Latest estimated month of a regulatory decision, "YYYY-MM".
+  string expected_decision_to = 15;
+  // True when the candidate is not yet an approved drug (new drug rather than
+  // a label expansion of an approved one).
+  bool novel = 16;
+  // Planned or actual enrollment (0 = unknown).
+  int32 enrollment = 17;
+  // ClinicalTrials.gov study URL.
+  string source_url = 18;
+}
+
+// PipelineFacetCount is the number of pipeline entries in one category,
+// computed before modality/area filters are applied.
+message PipelineFacetCount {
+  // Category key (a modality or therapeutic_area value).
+  string key = 1;
+  // Entries in this category.
+  int32 count = 2;
+}
+
+message ListDrugPipelineRequest {
+  // Filter by modality value; empty = all.
+  string modality = 1 [(sebuf.http.query) = {name: "modality"}];
+  // Filter by therapeutic_area value; empty = all.
+  string therapeutic_area = 2 [(sebuf.http.query) = {name: "therapeutic_area"}];
+  // When true, only entries whose candidate is not yet approved.
+  bool novel_only = 3 [(sebuf.http.query) = {name: "novel_only"}];
+  // Max entries to return (default 200, max 500).
+  int32 limit = 4 [(sebuf.http.query) = {name: "limit"}];
+}
+
+message ListDrugPipelineResponse {
+  // Entries ordered by expected_decision_from ascending.
+  repeated DrugPipelineEntry entries = 1;
+  // Entries matching the filters before the limit was applied.
+  int32 total = 2;
+  // Per-modality counts across the whole dataset (respects novel_only only).
+  repeated PipelineFacetCount modality_counts = 3;
+  // Per-therapeutic-area counts across the whole dataset (respects novel_only only).
+  repeated PipelineFacetCount area_counts = 4;
+  // ISO-8601 timestamp of the seed run that produced the data.
+  string generated_at = 5;
+  // True when the seed-backed dataset is unavailable; empty payload fields are
+  // graceful degradation, not confirmed zero data.
+  bool unavailable = 6;
+}

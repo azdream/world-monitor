@@ -2125,6 +2125,56 @@
         "failedToLoad": "Betöltés sikertelen"
       }
     },
+    "drugPipeline": {
+      "infoTooltip": "<strong>Gyógyszerfejlesztés</strong> Ipari szponzorálású 3. fázisú vizsgálatok aszerint csoportosítva, hogy legkorábban melyik negyedévben születhet hatósági döntés, valamint a közelmúlt eredeti FDA-engedélyei. A döntési időablakok az egyes vizsgálatok elsődleges befejezési dátumából számított becslések, nem bejelentett időpontok. Források: ClinicalTrials.gov, openFDA, ChEMBL.",
+      "title": "Gyógyszerfejlesztés",
+      "tabs": {
+        "pipeline": "Fejlesztés alatt",
+        "approvals": "Friss engedélyek"
+      },
+      "allModalities": "Minden gyógyszertípus",
+      "allAreas": "Minden terápiás terület",
+      "novelOnly": "Csak új gyógyszerek (indikációbővítések elrejtése)",
+      "newDrug": "ÚJ",
+      "labelExpansion": "BŐVÍTÉS",
+      "priorityReview": "KIEMELT",
+      "estimatedWindow": "Becsült döntés: {{window}}",
+      "completedOn": "Vizsgálat lezárult: {{date}}",
+      "completionExpected": "Vizsgálat vége: {{date}}",
+      "earliestFrom": "LEGKORÁBBAN {{quarter}}",
+      "showingOf": "A legközelebbi {{shown}} vizsgálat a(z) {{total}} közül",
+      "totalTrials": "{{total}} vizsgálat",
+      "noMatches": "Nincs a szűrőknek megfelelő tétel",
+      "disclaimer": "A becsült időablakok az elsődleges befejezéstől a benyújtásig 4–10 hónappal, az elbírálásra 6–12 hónappal számolnak. A vizsgálatok meghiúsulhatnak vagy csúszhatnak, és a szponzor által bejelentett döntési dátum mindig felülírja ezt a becslést.",
+      "approvalsNote": "Eredeti NDA- és BLA-engedélyek a Drugs@FDA adatbázisból az elmúlt 180 napból. A CBER által szabályozott vakcinák, valamint sejt- és génterápiák nem szerepelnek.",
+      "modality": {
+        "small_molecule": "Kis molekula",
+        "antibody": "Antitest",
+        "adc": "ADC",
+        "cell_therapy": "Sejtterápia",
+        "gene_therapy": "Génterápia",
+        "rna": "RNA",
+        "vaccine": "Vakcina",
+        "peptide_protein": "Peptid / fehérje",
+        "other": "Egyéb"
+      },
+      "area": {
+        "oncology": "Onkológia",
+        "metabolic": "Anyagcsere",
+        "neurology": "Neurológia",
+        "cardiovascular": "Szív- és érrendszer",
+        "immunology": "Immunológia",
+        "infectious": "Fertőző betegségek",
+        "respiratory": "Légzőszervi",
+        "psychiatry": "Pszichiátria",
+        "hematology": "Hematológia",
+        "other": "Egyéb"
+      },
+      "errors": {
+        "noData": "Nincs gyógyszerfejlesztési adat",
+        "failedToLoad": "Betöltés sikertelen"
+      }
+    },
     "earningsCalendar": {
       "infoTooltip": "<strong>Earnings Calendar</strong> Közelgő és közelmúltbeli nyereségközlemények a nagy nyilvános vállalatoktól. Az EPS becsléseket, tényleges értékeket, bevételt és megtérülést/hiányt mutatja. Forrás: pénzügyi adatszolgáltatók.",
       "title": "Earnings Calendar",

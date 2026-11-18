@@ -1933,6 +1933,56 @@
       },
       "methodologyNote": "警报 / 警告 / 监视级别来自编辑关键词分类器 — 请参阅 /docs/methodology/disease-alert-level 了解关键词表和限制。"
     },
+    "drugPipeline": {
+      "infoTooltip": "<strong>新药管线</strong> 按最早可能出现监管决定的季度分组展示企业申办的3期临床试验，并附近期FDA首次批准。决定窗口是根据各试验主要完成日期推算的估计值，并非官方公布日期。来源：ClinicalTrials.gov、openFDA、ChEMBL。",
+      "title": "新药管线",
+      "tabs": {
+        "pipeline": "管线",
+        "approvals": "近期批准"
+      },
+      "allModalities": "全部药物类型",
+      "allAreas": "全部治疗领域",
+      "novelOnly": "仅看新药（隐藏适应症扩展）",
+      "newDrug": "新药",
+      "labelExpansion": "适应症扩展",
+      "priorityReview": "优先审评",
+      "estimatedWindow": "预计决定 {{window}}",
+      "completedOn": "试验已完成 {{date}}",
+      "completionExpected": "试验预计结束 {{date}}",
+      "earliestFrom": "最早 {{quarter}}",
+      "showingOf": "共{{total}}项试验，显示最近的{{shown}}项",
+      "totalTrials": "{{total}}项试验",
+      "noMatches": "没有符合筛选条件的条目",
+      "disclaimer": "预计窗口假设从主要完成到提交申请需4–10个月，审评需6–12个月。试验可能失败或延期，申办方公布的决定日期始终优先于此估计。",
+      "approvalsNote": "过去180天内Drugs@FDA收录的NDA和BLA首次批准。不包括由CBER监管的疫苗及细胞或基因疗法。",
+      "modality": {
+        "small_molecule": "小分子",
+        "antibody": "抗体",
+        "adc": "ADC",
+        "cell_therapy": "细胞疗法",
+        "gene_therapy": "基因疗法",
+        "rna": "RNA",
+        "vaccine": "疫苗",
+        "peptide_protein": "多肽/蛋白",
+        "other": "其他"
+      },
+      "area": {
+        "oncology": "肿瘤",
+        "metabolic": "代谢",
+        "neurology": "神经",
+        "cardiovascular": "心血管",
+        "immunology": "免疫",
+        "infectious": "感染",
+        "respiratory": "呼吸",
+        "psychiatry": "精神",
+        "hematology": "血液",
+        "other": "其他"
+      },
+      "errors": {
+        "noData": "暂无新药管线数据",
+        "failedToLoad": "加载失败"
+      }
+    },
     "earningsCalendar": {
       "infoTooltip": "<strong>财报日历</strong> 大型上市公司即将和近期的财报发布。显示EPS预期与实际对比、营收及超预期/不及预期分类。来源：金融数据提供商。",
       "title": "财报日历",

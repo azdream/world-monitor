@@ -88,6 +88,7 @@ export * from './MacroTilesPanel';
 export * from './FSIPanel';
 export * from './YieldCurvePanel';
 export * from './EarningsCalendarPanel';
+export * from './DrugPipelinePanel';
 export * from './EconomicCalendarPanel';
 export * from './CotPositioningPanel';
 export * from './LiquidityShiftsPanel';

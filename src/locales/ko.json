@@ -1933,6 +1933,56 @@
       },
       "methodologyNote": "Alert / Warning / Watch 수준은 편집 키워드 분류기에서 제공 — 키워드 표 및 제한사항은 /docs/methodology/disease-alert-level 참조"
     },
+    "drugPipeline": {
+      "infoTooltip": "<strong>신약 파이프라인</strong> 제약사가 주도하는 임상 3상 시험을 규제 승인 결정이 가장 빨리 나올 수 있는 분기별로 묶고, 최근 FDA 신규 승인을 함께 보여줍니다. 결정 시기는 각 시험의 주요 완료일에서 계산한 추정치이며 발표된 날짜가 아닙니다. 출처: ClinicalTrials.gov, openFDA, ChEMBL.",
+      "title": "신약 파이프라인",
+      "tabs": {
+        "pipeline": "파이프라인",
+        "approvals": "최근 승인"
+      },
+      "allModalities": "모든 신약 종류",
+      "allAreas": "모든 치료 영역",
+      "novelOnly": "신약만 보기 (적응증 확대 제외)",
+      "newDrug": "신약",
+      "labelExpansion": "적응증 확대",
+      "priorityReview": "우선심사",
+      "estimatedWindow": "예상 결정 {{window}}",
+      "completedOn": "시험 완료 {{date}}",
+      "completionExpected": "시험 종료 예정 {{date}}",
+      "earliestFrom": "가장 이른 시점 {{quarter}}",
+      "showingOf": "전체 {{total}}건 중 가장 이른 {{shown}}건 표시",
+      "totalTrials": "시험 {{total}}건",
+      "noMatches": "조건에 맞는 항목이 없습니다",
+      "disclaimer": "예상 시기는 주요 완료일부터 허가 신청까지 4~10개월, 심사 6~12개월을 가정한 값입니다. 시험은 실패하거나 지연될 수 있으며, 제약사가 발표한 결정일이 있으면 그 날짜가 우선합니다.",
+      "approvalsNote": "최근 180일간 Drugs@FDA에 등록된 NDA·BLA 신규 승인입니다. CBER가 관할하는 백신과 세포·유전자 치료제는 포함되지 않습니다.",
+      "modality": {
+        "small_molecule": "저분자",
+        "antibody": "항체",
+        "adc": "ADC",
+        "cell_therapy": "세포치료제",
+        "gene_therapy": "유전자치료제",
+        "rna": "RNA",
+        "vaccine": "백신",
+        "peptide_protein": "펩타이드·단백질",
+        "other": "기타"
+      },
+      "area": {
+        "oncology": "항암",
+        "metabolic": "대사",
+        "neurology": "신경",
+        "cardiovascular": "심혈관",
+        "immunology": "면역",
+        "infectious": "감염",
+        "respiratory": "호흡기",
+        "psychiatry": "정신",
+        "hematology": "혈액",
+        "other": "기타"
+      },
+      "errors": {
+        "noData": "신약 파이프라인 데이터 없음",
+        "failedToLoad": "불러오지 못했습니다"
+      }
+    },
     "earningsCalendar": {
       "infoTooltip": "<strong>실적 캘린더</strong> 주요 상장 기업의 예정 및 최근 실적 발표. EPS 추정치 대 실적, 매출, 상회/하회 분류를 표시. 출처: 금융 데이터 제공업체.",
       "title": "어닝 캘린더",

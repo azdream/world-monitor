@@ -1933,6 +1933,56 @@
       },
       "methodologyNote": "Alert / Warning / Watch レベルは編集用キーワード分類器から取得されます — キーワード表と制限事項については /docs/methodology/disease-alert-level を参照してください。"
     },
+    "drugPipeline": {
+      "infoTooltip": "<strong>新薬パイプライン</strong> 企業主導の第3相試験を、規制当局の判断が最も早く出うる四半期ごとにまとめ、最近のFDA新規承認もあわせて表示。判断時期は各試験の主要評価完了日から算出した推定値で、公表された日付ではありません。ソース：ClinicalTrials.gov、openFDA、ChEMBL。",
+      "title": "新薬パイプライン",
+      "tabs": {
+        "pipeline": "パイプライン",
+        "approvals": "最近の承認"
+      },
+      "allModalities": "すべての薬剤タイプ",
+      "allAreas": "すべての治療領域",
+      "novelOnly": "新薬のみ（適応拡大を非表示）",
+      "newDrug": "新薬",
+      "labelExpansion": "適応拡大",
+      "priorityReview": "優先審査",
+      "estimatedWindow": "判断見込み {{window}}",
+      "completedOn": "試験完了 {{date}}",
+      "completionExpected": "試験終了予定 {{date}}",
+      "earliestFrom": "最短 {{quarter}}",
+      "showingOf": "全{{total}}件中、直近の{{shown}}件を表示",
+      "totalTrials": "試験 {{total}}件",
+      "noMatches": "条件に一致する項目はありません",
+      "disclaimer": "推定時期は、主要評価完了から申請まで4〜10か月、審査6〜12か月を前提としています。試験は失敗や遅延の可能性があり、企業が公表した判断日がある場合は常にそちらが優先されます。",
+      "approvalsNote": "過去180日間のDrugs@FDAにおけるNDA・BLAの新規承認。CBERが所管するワクチンおよび細胞・遺伝子治療は含まれません。",
+      "modality": {
+        "small_molecule": "低分子",
+        "antibody": "抗体",
+        "adc": "ADC",
+        "cell_therapy": "細胞治療",
+        "gene_therapy": "遺伝子治療",
+        "rna": "RNA",
+        "vaccine": "ワクチン",
+        "peptide_protein": "ペプチド・タンパク質",
+        "other": "その他"
+      },
+      "area": {
+        "oncology": "がん",
+        "metabolic": "代謝",
+        "neurology": "神経",
+        "cardiovascular": "循環器",
+        "immunology": "免疫",
+        "infectious": "感染症",
+        "respiratory": "呼吸器",
+        "psychiatry": "精神",
+        "hematology": "血液",
+        "other": "その他"
+      },
+      "errors": {
+        "noData": "新薬パイプラインのデータはありません",
+        "failedToLoad": "読み込みに失敗しました"
+      }
+    },
     "earningsCalendar": {
       "infoTooltip": "<strong>決算カレンダー</strong> 主要上場企業の今後および最近の決算発表。EPS予想 vs 実績、収益、予想超過/未達の分類を表示。ソース：金融データプロバイダー。",
       "title": "決算カレンダー",
