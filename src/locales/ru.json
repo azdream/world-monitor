@@ -2297,6 +2297,7 @@
       },
       "allModalities": "Все типы препаратов",
       "allAreas": "Все терапевтические области",
+      "allCompanies": "Все компании",
       "novelOnly": "Только новые препараты (скрыть расширения показаний)",
       "newDrug": "НОВЫЙ",
       "labelExpansion": "РАСШИРЕНИЕ",
@@ -2320,8 +2321,11 @@
         "other": "Другое"
       },
       "area": {
-        "oncology": "Онкология",
-        "metabolic": "Метаболизм",
+        "oncology_solid": "Солидные опухоли",
+        "oncology_hematologic": "Рак крови",
+        "obesity": "Ожирение",
+        "diabetes": "Диабет",
+        "metabolic": "Прочие метаболические",
         "neurology": "Неврология",
         "cardiovascular": "Сердечно-сосудистые",
         "immunology": "Иммунология",
@@ -2329,6 +2333,7 @@
         "respiratory": "Пульмонология",
         "psychiatry": "Психиатрия",
         "hematology": "Гематология",
+        "ophthalmology": "Офтальмология",
         "other": "Другое"
       },
       "errors": {

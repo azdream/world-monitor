@@ -2287,6 +2287,7 @@
       },
       "allModalities": "Tutti i tipi di farmaco",
       "allAreas": "Tutte le aree terapeutiche",
+      "allCompanies": "Tutte le aziende",
       "novelOnly": "Solo nuovi farmaci (nascondi estensioni di indicazione)",
       "newDrug": "NUOVO",
       "labelExpansion": "ESTENSIONE",
@@ -2310,8 +2311,11 @@
         "other": "Altro"
       },
       "area": {
-        "oncology": "Oncologia",
-        "metabolic": "Metabolico",
+        "oncology_solid": "Tumori solidi",
+        "oncology_hematologic": "Tumori del sangue",
+        "obesity": "Obesità",
+        "diabetes": "Diabete",
+        "metabolic": "Altre metaboliche",
         "neurology": "Neurologia",
         "cardiovascular": "Cardiovascolare",
         "immunology": "Immunologia",
@@ -2319,6 +2323,7 @@
         "respiratory": "Respiratorio",
         "psychiatry": "Psichiatria",
         "hematology": "Ematologia",
+        "ophthalmology": "Oftalmologia",
         "other": "Altro"
       },
       "errors": {

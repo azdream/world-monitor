@@ -2586,6 +2586,7 @@
       },
       "allModalities": "Усі типи ліків",
       "allAreas": "Усі терапевтичні напрями",
+      "allCompanies": "Усі компанії",
       "novelOnly": "Лише нові ліки (без розширення показань)",
       "newDrug": "НОВИЙ",
       "labelExpansion": "РОЗШИРЕННЯ",
@@ -2609,8 +2610,11 @@
         "other": "Інше"
       },
       "area": {
-        "oncology": "Онкологія",
-        "metabolic": "Метаболізм",
+        "oncology_solid": "Солідні пухлини",
+        "oncology_hematologic": "Рак крові",
+        "obesity": "Ожиріння",
+        "diabetes": "Діабет",
+        "metabolic": "Інші метаболічні",
         "neurology": "Неврологія",
         "cardiovascular": "Серцево-судинні",
         "immunology": "Імунологія",
@@ -2618,6 +2622,7 @@
         "respiratory": "Дихальна система",
         "psychiatry": "Психіатрія",
         "hematology": "Гематологія",
+        "ophthalmology": "Офтальмологія",
         "other": "Інше"
       },
       "errors": {

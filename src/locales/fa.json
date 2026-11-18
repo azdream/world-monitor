@@ -2564,6 +2564,7 @@
       },
       "allModalities": "همه انواع دارو",
       "allAreas": "همه حوزه‌های درمانی",
+      "allCompanies": "همه شرکت‌ها",
       "novelOnly": "فقط داروهای جدید (پنهان‌کردن گسترش موارد مصرف)",
       "newDrug": "جدید",
       "labelExpansion": "گسترش",
@@ -2587,8 +2588,11 @@
         "other": "سایر"
       },
       "area": {
-        "oncology": "سرطان‌شناسی",
-        "metabolic": "متابولیک",
+        "oncology_solid": "تومورهای جامد",
+        "oncology_hematologic": "سرطان‌های خون",
+        "obesity": "چاقی",
+        "diabetes": "دیابت",
+        "metabolic": "سایر بیماری‌های متابولیک",
         "neurology": "مغز و اعصاب",
         "cardiovascular": "قلب و عروق",
         "immunology": "ایمنی‌شناسی",
@@ -2596,6 +2600,7 @@
         "respiratory": "تنفسی",
         "psychiatry": "روان‌پزشکی",
         "hematology": "خون‌شناسی",
+        "ophthalmology": "چشم‌پزشکی",
         "other": "سایر"
       },
       "errors": {

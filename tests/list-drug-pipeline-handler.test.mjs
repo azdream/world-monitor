@@ -15,14 +15,14 @@ const entry = (over) => ({
   phase: 'PHASE3', status: 'RECRUITING', modality: 'adc', modalitySource: 'name',
   therapeuticArea: 'oncology', conditions: ['Breast Cancer'], primaryCompletionDate: '2026-11-30',
   primaryCompletionActual: false, expectedDecisionFrom: '2027-09', expectedDecisionTo: '2028-09',
-  novel: true, enrollment: 365, ...over,
+  novel: true, enrollment: 365, parentCompany: '', hqCountry: '', ...over,
 });
 
 const SEED = {
   generatedAt: '2026-11-18T00:00:00.000Z',
   entries: [
-    entry({ nctId: 'NCT00000001' }),
-    entry({ nctId: 'NCT00000002', modality: 'small_molecule', therapeuticArea: 'metabolic', novel: false }),
+    entry({ nctId: 'NCT00000001', parentCompany: 'Kelun Pharmaceutical', hqCountry: 'CN' }),
+    entry({ nctId: 'NCT00000002', modality: 'small_molecule', therapeuticArea: 'obesity', novel: false, parentCompany: 'Novo Nordisk', hqCountry: 'DK' }),
     entry({ nctId: 'NCT00000003', modality: 'small_molecule', therapeuticArea: 'oncology' }),
   ],
   approvals: [{ applicationNumber: 'NDA220414', brandName: 'PIMJETMI', approvalDate: '2026-11-10', applicationType: 'NDA', newMolecularEntity: true, modality: 'small_molecule' }],
@@ -49,7 +49,7 @@ beforeEach(() => {
   cacheStore.clear();
 });
 
-const req = (over = {}) => ({ modality: '', therapeuticArea: '', novelOnly: false, limit: 0, ...over });
+const req = (over = {}) => ({ modality: '', therapeuticArea: '', novelOnly: false, company: '', limit: 0, ...over });
 
 describe('listDrugPipeline', () => {
   it('reports unavailable (not an empty success) when the seed key is missing', async () => {
@@ -78,7 +78,7 @@ describe('listDrugPipeline', () => {
     cacheStore.set(REDIS_KEY, SEED);
     const resp = await listDrugPipeline({}, req({ modality: 'adc' }));
     assert.deepEqual(resp.modalityCounts, [{ key: 'small_molecule', count: 2 }, { key: 'adc', count: 1 }]);
-    assert.deepEqual(resp.areaCounts, [{ key: 'oncology', count: 2 }, { key: 'metabolic', count: 1 }]);
+    assert.deepEqual(resp.areaCounts, [{ key: 'oncology', count: 2 }, { key: 'obesity', count: 1 }]);
   });
 
   it('applies novel_only to both entries and facets', async () => {
@@ -107,6 +107,40 @@ describe('listDrugPipeline', () => {
     const resp = await listDrugPipeline({}, req({ modality: 'nonsense' }));
     assert.equal(resp.total, 0);
     assert.equal(resp.unavailable, false);
+  });
+});
+
+describe('listDrugPipeline companies', () => {
+  it('filters by parent company, case-insensitively', async () => {
+    cacheStore.set(REDIS_KEY, SEED);
+    const resp = await listDrugPipeline({}, req({ company: 'novo nordisk' }));
+    assert.deepEqual(resp.entries.map((e) => e.nctId), ['NCT00000002']);
+    assert.equal(resp.entries[0].hqCountry, 'DK');
+  });
+
+  it('never matches unmapped sponsors, whatever the filter says', async () => {
+    cacheStore.set(REDIS_KEY, SEED);
+    assert.equal((await listDrugPipeline({}, req({ company: 'Acme' }))).total, 0);
+  });
+
+  it('counts only mapped sponsors in the company facet', async () => {
+    cacheStore.set(REDIS_KEY, SEED);
+    const resp = await listDrugPipeline({}, req());
+    assert.deepEqual(resp.companyCounts, [{ key: 'Kelun Pharmaceutical', count: 1 }, { key: 'Novo Nordisk', count: 1 }]);
+  });
+
+  it('caps the company facet at 40 entries', async () => {
+    cacheStore.set(REDIS_KEY, { ...SEED, entries: Array.from({ length: 60 }, (_, i) => entry({ nctId: `NCT${i}`, parentCompany: `Co ${i}` })) });
+    assert.equal((await listDrugPipeline({}, req())).companyCounts.length, 40);
+  });
+
+  it('tolerates seed payloads written before the roll-up existed', async () => {
+    const legacy = SEED.entries.map(({ parentCompany: _p, hqCountry: _h, ...rest }) => rest);
+    cacheStore.set(REDIS_KEY, { ...SEED, entries: legacy });
+    const resp = await listDrugPipeline({}, req());
+    assert.equal(resp.total, 3);
+    assert.equal(resp.entries[0].parentCompany, '');
+    assert.deepEqual(resp.companyCounts, []);
   });
 });
 

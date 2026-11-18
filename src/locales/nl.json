@@ -1893,6 +1893,7 @@
       },
       "allModalities": "Alle geneesmiddeltypen",
       "allAreas": "Alle therapeutische gebieden",
+      "allCompanies": "Alle bedrijven",
       "novelOnly": "Alleen nieuwe geneesmiddelen (indicatie-uitbreidingen verbergen)",
       "newDrug": "NIEUW",
       "labelExpansion": "UITBREIDING",
@@ -1916,8 +1917,11 @@
         "other": "Overig"
       },
       "area": {
-        "oncology": "Oncologie",
-        "metabolic": "Metabool",
+        "oncology_solid": "Solide tumoren",
+        "oncology_hematologic": "Bloedkanker",
+        "obesity": "Obesitas",
+        "diabetes": "Suikerziekte",
+        "metabolic": "Overig metabool",
         "neurology": "Neurologie",
         "cardiovascular": "Cardiovasculair",
         "immunology": "Immunologie",
@@ -1925,6 +1929,7 @@
         "respiratory": "Luchtwegen",
         "psychiatry": "Psychiatrie",
         "hematology": "Hematologie",
+        "ophthalmology": "Oogheelkunde",
         "other": "Overig"
       },
       "errors": {

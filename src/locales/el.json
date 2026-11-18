@@ -2277,6 +2277,7 @@
       },
       "allModalities": "Όλοι οι τύποι φαρμάκων",
       "allAreas": "Όλες οι θεραπευτικές περιοχές",
+      "allCompanies": "Όλες οι εταιρείες",
       "novelOnly": "Μόνο νέα φάρμακα (απόκρυψη επεκτάσεων ένδειξης)",
       "newDrug": "ΝΕΟ",
       "labelExpansion": "ΕΠΕΚΤΑΣΗ",
@@ -2300,8 +2301,11 @@
         "other": "Άλλο"
       },
       "area": {
-        "oncology": "Ογκολογία",
-        "metabolic": "Μεταβολικά",
+        "oncology_solid": "Συμπαγείς όγκοι",
+        "oncology_hematologic": "Αιματολογικοί καρκίνοι",
+        "obesity": "Παχυσαρκία",
+        "diabetes": "Διαβήτης",
+        "metabolic": "Άλλα μεταβολικά",
         "neurology": "Νευρολογία",
         "cardiovascular": "Καρδιαγγειακά",
         "immunology": "Ανοσολογία",
@@ -2309,6 +2313,7 @@
         "respiratory": "Αναπνευστικά",
         "psychiatry": "Ψυχιατρική",
         "hematology": "Αιματολογία",
+        "ophthalmology": "Οφθαλμολογία",
         "other": "Άλλο"
       },
       "errors": {

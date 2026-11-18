@@ -10,15 +10,20 @@ import { readDrugPipelineSeed } from './_shared';
 
 const DEFAULT_LIMIT = 200;
 const MAX_LIMIT = 500;
+// Company facet is a pick-list, not a census: the long tail of one-trial sponsors stays out.
+const MAX_COMPANY_FACETS = 40;
 
 const UNAVAILABLE: ListDrugPipelineResponse = {
   entries: [], total: 0, modalityCounts: [], areaCounts: [], generatedAt: '', unavailable: true,
-  approvals: [], approvalsUnavailable: true,
+  approvals: [], approvalsUnavailable: true, companyCounts: [],
 };
 
-function countBy(entries: DrugPipelineEntry[], field: 'modality' | 'therapeuticArea'): PipelineFacetCount[] {
+function countBy(entries: DrugPipelineEntry[], field: 'modality' | 'therapeuticArea' | 'parentCompany'): PipelineFacetCount[] {
   const counts = new Map<string, number>();
-  for (const e of entries) counts.set(e[field], (counts.get(e[field]) ?? 0) + 1);
+  for (const e of entries) {
+    // Unmapped sponsors have no parent; they are not a category of their own.
+    if (e[field]) counts.set(e[field], (counts.get(e[field]) ?? 0) + 1);
+  }
   return [...counts.entries()]
     .map(([key, count]) => ({ key, count }))
     .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key));
@@ -50,6 +55,8 @@ export async function listDrugPipeline(
       expectedDecisionTo: e.expectedDecisionTo ?? '',
       novel: e.novel ?? false,
       enrollment: e.enrollment ?? 0,
+      parentCompany: e.parentCompany ?? '',
+      hqCountry: e.hqCountry ?? '',
       sourceUrl: e.nctId ? `https://clinicaltrials.gov/study/${encodeURIComponent(e.nctId)}` : '',
     }));
 
@@ -66,13 +73,17 @@ export async function listDrugPipeline(
       newMolecularEntity: a.newMolecularEntity ?? false,
       modality: a.modality ?? 'other',
       route: a.route ?? '',
+      parentCompany: a.parentCompany ?? '',
     }));
 
     const base = req.novelOnly ? all.filter((e) => e.novel) : all;
     const modality = (req.modality ?? '').trim().toLowerCase();
     const area = (req.therapeuticArea ?? '').trim().toLowerCase();
+    const company = (req.company ?? '').trim().toLowerCase();
     const matched = base.filter((e) =>
-      (!modality || e.modality === modality) && (!area || e.therapeuticArea === area));
+      (!modality || e.modality === modality)
+      && (!area || e.therapeuticArea === area)
+      && (!company || e.parentCompany.toLowerCase() === company));
 
     const requested = Number.isFinite(req.limit) && req.limit > 0 ? Math.floor(req.limit) : DEFAULT_LIMIT;
     const limit = Math.min(requested, MAX_LIMIT);
@@ -86,6 +97,7 @@ export async function listDrugPipeline(
       unavailable: false,
       approvals,
       approvalsUnavailable,
+      companyCounts: countBy(base, 'parentCompany').slice(0, MAX_COMPANY_FACETS),
     };
   } catch {
     return UNAVAILABLE;

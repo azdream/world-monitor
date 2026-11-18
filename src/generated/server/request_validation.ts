@@ -2616,6 +2616,10 @@ export const GENERATED_MESSAGE_RULES = {
       "therapeuticArea": {
         "kind": "string",
         "stringMaxBytes": 65536
+      },
+      "company": {
+        "kind": "string",
+        "stringMaxBytes": 65536
       }
     }
   },

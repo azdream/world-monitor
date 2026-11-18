@@ -1901,6 +1901,7 @@
       },
       "allModalities": "Todos os tipos de medicamento",
       "allAreas": "Todas as áreas terapêuticas",
+      "allCompanies": "Todas as empresas",
       "novelOnly": "Somente novos medicamentos (ocultar expansões de indicação)",
       "newDrug": "NOVO",
       "labelExpansion": "EXPANSÃO",
@@ -1924,8 +1925,11 @@
         "other": "Outro"
       },
       "area": {
-        "oncology": "Oncologia",
-        "metabolic": "Metabólico",
+        "oncology_solid": "Tumores sólidos",
+        "oncology_hematologic": "Cânceres do sangue",
+        "obesity": "Obesidade",
+        "diabetes": "Diabetes",
+        "metabolic": "Outras metabólicas",
         "neurology": "Neurologia",
         "cardiovascular": "Cardiovascular",
         "immunology": "Imunologia",
@@ -1933,6 +1937,7 @@
         "respiratory": "Respiratório",
         "psychiatry": "Psiquiatria",
         "hematology": "Hematologia",
+        "ophthalmology": "Oftalmologia",
         "other": "Outro"
       },
       "errors": {

@@ -16,6 +16,7 @@ import {
   modalityFromName,
   resolveModality,
 } from '../scripts/_drug-pipeline-helpers.mjs';
+import { PHARMA_PARENTS, normalizeCompanyName, resolveParentCompany } from '../scripts/_pharma-companies.mjs';
 
 const chembl = buildChemblIndex([
   { pref_name: 'BEVACIZUMAB', molecule_type: 'Antibody', max_phase: '4.0', first_approval: 2004, molecule_synonyms: [{ molecule_synonym: 'Avastin' }] },
@@ -86,15 +87,101 @@ describe('modality classification', () => {
 
 describe('therapeutic area classification', () => {
   it('resolves overlapping MeSH ancestors by priority', () => {
-    assert.equal(classifyTherapeuticArea(['Respiratory Tract Diseases', 'Neoplasms'], []), 'oncology');
+    assert.equal(classifyTherapeuticArea(['Respiratory Tract Diseases', 'Neoplasms'], []), 'oncology_solid');
     assert.equal(classifyTherapeuticArea(['Immune System Diseases', 'Virus Diseases'], []), 'infectious');
     assert.equal(classifyTherapeuticArea(['Immune System Diseases', 'Respiratory Tract Diseases'], []), 'respiratory');
     assert.equal(classifyTherapeuticArea(['Mental Disorders', 'Nervous System Diseases'], []), 'neurology');
   });
 
-  it('falls back to condition text, then to other', () => {
-    assert.equal(classifyTherapeuticArea([], ['Type 2 Diabetes Mellitus']), 'metabolic');
+  it('splits oncology into solid tumours and blood cancers', () => {
+    assert.equal(classifyTherapeuticArea(['Colorectal Neoplasms', 'Neoplasms'], ['Metastatic Colorectal Cancer']), 'oncology_solid');
+    assert.equal(classifyTherapeuticArea(['Lymphoma, Large B-Cell, Diffuse', 'Neoplasms'], ['DLBCL']), 'oncology_hematologic');
+    assert.equal(classifyTherapeuticArea(['Multiple Myeloma', 'Neoplasms'], []), 'oncology_hematologic');
+    assert.equal(classifyTherapeuticArea(['Retinoblastoma', 'Neoplasms', 'Eye Diseases'], []), 'oncology_solid');
+  });
+
+  it('recognises bare registry abbreviations', () => {
+    assert.equal(classifyTherapeuticArea([], ['NSCLC']), 'oncology_solid');
+    assert.equal(classifyTherapeuticArea([], ['CLL/SLL']), 'oncology_hematologic');
+    assert.equal(classifyTherapeuticArea([], ['T2DM']), 'diabetes');
+  });
+
+  it('splits obesity and diabetes out of metabolic by the first-listed condition', () => {
+    assert.equal(classifyTherapeuticArea(['Diabetes Mellitus, Type 2', 'Endocrine System Diseases'], ['Obesity', 'Type 2 Diabetes']), 'obesity');
+    assert.equal(classifyTherapeuticArea(['Obesity', 'Nutritional and Metabolic Diseases'], ['Type 2 Diabetes Mellitus', 'Obesity']), 'diabetes');
+    assert.equal(classifyTherapeuticArea([], ['Weight Loss']), 'obesity');
+    assert.equal(classifyTherapeuticArea(['Hypercholesterolemia', 'Nutritional and Metabolic Diseases'], ['HeFH']), 'metabolic');
+  });
+
+  it('lets the first-listed condition outrank a comorbidity\'s MeSH terms', () => {
+    assert.equal(classifyTherapeuticArea(['Arthritis, Psoriatic', 'Obesity', 'Nutritional and Metabolic Diseases'], ['Psoriatic Arthritis', 'Obesity']), 'immunology');
+    assert.equal(classifyTherapeuticArea(['Heart Failure', 'Obesity', 'Nutritional and Metabolic Diseases'], ['Heart Failure', 'Obesity']), 'cardiovascular');
+  });
+
+  it('does not read a negated condition as the condition', () => {
+    assert.notEqual(classifyTherapeuticArea(['Renal Insufficiency, Chronic'], ['Non-diabetic Chronic Kidney Disease']), 'diabetes');
+    assert.equal(classifyTherapeuticArea([], ['Non-Diabetic Chronic Kidney Disease']), 'other');
+  });
+
+  it('files eye disease under ophthalmology even when diabetes is the cause', () => {
+    assert.equal(classifyTherapeuticArea(['Macular Edema', 'Eye Diseases', 'Diabetes Mellitus', 'Endocrine System Diseases'], ['Diabetic Macular Edema']), 'ophthalmology');
+    assert.equal(classifyTherapeuticArea([], ['Neovascular Age-related Macular Degeneration']), 'ophthalmology');
+  });
+
+  it('falls back to other when nothing matches', () => {
     assert.equal(classifyTherapeuticArea([], ['Glabellar Frown Lines']), 'other');
+    assert.equal(classifyTherapeuticArea(), 'other');
+  });
+});
+
+describe('parent company roll-up', () => {
+  it('maps subsidiaries and registry spellings to the parent', () => {
+    assert.deepEqual(resolveParentCompany('Janssen Research & Development, LLC'), { name: 'Johnson & Johnson', hq: 'US' });
+    assert.deepEqual(resolveParentCompany('Suzhou Suncadia Biopharmaceuticals Co., Ltd.'), { name: 'Jiangsu Hengrui', hq: 'CN' });
+    assert.equal(resolveParentCompany('Seagen, a wholly owned subsidiary of Pfizer')?.name, 'Pfizer');
+    assert.equal(resolveParentCompany('ALEXION PHARM')?.name, 'AstraZeneca');
+    assert.equal(resolveParentCompany('Hoffmann-La Roche')?.name, 'Roche');
+  });
+
+  it('keeps the two unrelated Mercks apart and leaves bare "Merck" unmapped', () => {
+    assert.equal(resolveParentCompany('Merck Sharp & Dohme LLC')?.hq, 'US');
+    assert.equal(resolveParentCompany('EMD Serono Research & Development Institute, Inc.')?.hq, 'DE');
+    assert.equal(resolveParentCompany('Merck KGaA, Darmstadt, Germany')?.hq, 'DE');
+    assert.equal(resolveParentCompany('Merck'), null);
+  });
+
+  it('matches whole words only', () => {
+    // "roche" inside La Roche-Posay (L'Oreal) and "ucb" inside a longer token must not match.
+    assert.equal(resolveParentCompany('La Roche-Posay Laboratoire Dermatologique'), null);
+    assert.equal(resolveParentCompany('Bayerische Forschungsstiftung'), null);
+    assert.equal(resolveParentCompany('Lillydale Biotech'), null);
+  });
+
+  it('returns null rather than a guess for unknown or empty sponsors', () => {
+    assert.equal(resolveParentCompany('Vanda Pharmaceuticals'), null);
+    assert.equal(resolveParentCompany(''), null);
+    assert.equal(resolveParentCompany(null), null);
+  });
+
+  it('has no alias claimed by two parents and only ISO-2 headquarters', () => {
+    const seen = new Map();
+    for (const parent of PHARMA_PARENTS) {
+      assert.match(parent.hq, /^[A-Z]{2}$/, `${parent.name} hq`);
+      for (const alias of parent.aliases) {
+        const key = normalizeCompanyName(alias);
+        assert.equal(key, alias, `${parent.name}: alias "${alias}" must already be normalized`);
+        assert.ok(!seen.has(key), `alias "${alias}" claimed by ${seen.get(key)} and ${parent.name}`);
+        seen.set(key, parent.name);
+      }
+    }
+  });
+
+  it('resolves every alias to its own parent (no alias is shadowed by a longer one elsewhere)', () => {
+    for (const parent of PHARMA_PARENTS) {
+      for (const alias of parent.aliases) {
+        assert.equal(resolveParentCompany(alias)?.name, parent.name, `alias "${alias}"`);
+      }
+    }
   });
 });
 
@@ -130,7 +217,9 @@ describe('buildPipelineEntry', () => {
     assert.equal(entry.novel, true);
     assert.equal(entry.modality, 'small_molecule');
     assert.equal(entry.modalitySource, 'chembl');
-    assert.equal(entry.therapeuticArea, 'oncology');
+    assert.equal(entry.therapeuticArea, 'oncology_solid');
+    assert.equal('parentCompany' in entry, false, 'unmapped sponsors carry no roll-up fields');
+    assert.equal('hqCountry' in entry, false);
     assert.deepEqual(entry.interventions, ['Bevacizumab', 'Anlotinib hydrochloride capsule']);
     assert.equal(entry.expectedDecisionFrom, '2027-04');
     assert.equal(entry.expectedDecisionTo, '2028-04');
@@ -141,6 +230,15 @@ describe('buildPipelineEntry', () => {
     const entry = buildPipelineEntry(study({ interventions: [{ type: 'BIOLOGICAL', name: 'Bevacizumab' }] }), chembl);
     assert.equal(entry.novel, false);
     assert.equal(entry.modality, 'antibody');
+  });
+
+  it('attaches the parent company and headquarters when the sponsor is known', () => {
+    const s = study({ interventions: [{ type: 'DRUG', name: 'A166' }] });
+    s.protocolSection.sponsorCollaboratorsModule.leadSponsor.name = 'Sichuan Kelun-Biotech Biopharmaceutical Co., Ltd.';
+    const entry = buildPipelineEntry(s, chembl);
+    assert.equal(entry.sponsor, 'Sichuan Kelun-Biotech Biopharmaceutical Co., Ltd.');
+    assert.equal(entry.parentCompany, 'Kelun Pharmaceutical');
+    assert.equal(entry.hqCountry, 'CN');
   });
 
   it('labels combined phase 2/3 trials', () => {
@@ -177,6 +275,7 @@ describe('buildApproval', () => {
     assert.equal(a.brandName, 'PIMJETMI');
     assert.equal(a.genericName, 'PIMICOTINIB');
     assert.equal(a.route, 'ORAL');
+    assert.equal(a.parentCompany, 'Merck KGaA');
   });
 
   it('ignores applications whose only in-window activity is a supplement', () => {

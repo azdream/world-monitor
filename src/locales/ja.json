@@ -2267,6 +2267,7 @@
       },
       "allModalities": "すべての薬剤タイプ",
       "allAreas": "すべての治療領域",
+      "allCompanies": "すべての企業",
       "novelOnly": "新薬のみ（適応拡大を非表示）",
       "newDrug": "新薬",
       "labelExpansion": "適応拡大",
@@ -2290,8 +2291,11 @@
         "other": "その他"
       },
       "area": {
-        "oncology": "がん",
-        "metabolic": "代謝",
+        "oncology_solid": "固形がん",
+        "oncology_hematologic": "血液がん",
+        "obesity": "肥満",
+        "diabetes": "糖尿病",
+        "metabolic": "その他の代謝",
         "neurology": "神経",
         "cardiovascular": "循環器",
         "immunology": "免疫",
@@ -2299,6 +2303,7 @@
         "respiratory": "呼吸器",
         "psychiatry": "精神",
         "hematology": "血液",
+        "ophthalmology": "眼科",
         "other": "その他"
       },
       "errors": {

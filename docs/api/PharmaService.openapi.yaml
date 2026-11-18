@@ -39,6 +39,13 @@ paths:
                   example: true
                   schema:
                     type: boolean
+                - name: company
+                  in: query
+                  description: Parent company filter.
+                  required: false
+                  example: "example"
+                  schema:
+                    type: string
                 - name: limit
                   in: query
                   description: Default 200, max 500.
@@ -71,6 +78,9 @@ paths:
                                 "areaCounts":
                                     - "count": 1
                                       "key": "example"
+                                "companyCounts":
+                                    - "count": 1
+                                      "key": "example"
                                 "entries":
                                     - "candidate": "2026-01-15"
                                       "conditions":
@@ -78,7 +88,6 @@ paths:
                                       "enrollment": 1
                                       "expectedDecisionFrom": "example"
                                       "expectedDecisionTo": "example"
-                                "generatedAt": "2026-01-15T12:00:00Z"
                             schema:
                                 $ref: '#/components/schemas/ListDrugPipelineResponse'
                 "400":
@@ -320,6 +329,9 @@ components:
                 novelOnly:
                     type: boolean
                     description: Only unapproved candidates.
+                company:
+                    type: string
+                    description: Parent company filter.
                 limit:
                     type: integer
                     format: int32
@@ -334,7 +346,6 @@ components:
                 total:
                     type: integer
                     format: int32
-                    description: Matches before the limit.
                 modalityCounts:
                     type: array
                     items:
@@ -354,6 +365,10 @@ components:
                         $ref: '#/components/schemas/DrugApproval'
                 approvalsUnavailable:
                     type: boolean
+                companyCounts:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/PipelineFacetCount'
         DrugPipelineEntry:
             type: object
             properties:
@@ -389,16 +404,19 @@ components:
                     type: boolean
                 expectedDecisionFrom:
                     type: string
-                    description: Estimated month (YYYY-MM), not an announced date.
+                    description: Estimated (YYYY-MM), not announced.
                 expectedDecisionTo:
                     type: string
                 novel:
                     type: boolean
-                    description: Candidate is not yet an approved drug.
                 enrollment:
                     type: integer
                     format: int32
                 sourceUrl:
+                    type: string
+                parentCompany:
+                    type: string
+                hqCountry:
                     type: string
             description: |-
                 Field vocabularies and the decision-window heuristic are documented in
@@ -436,4 +454,6 @@ components:
                 modality:
                     type: string
                 route:
+                    type: string
+                parentCompany:
                     type: string

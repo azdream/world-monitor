@@ -5,6 +5,7 @@ export interface ListDrugPipelineRequest {
   modality: string;
   therapeuticArea: string;
   novelOnly: boolean;
+  company: string;
   limit: number;
 }
 
@@ -17,6 +18,7 @@ export interface ListDrugPipelineResponse {
   unavailable: boolean;
   approvals: DrugApproval[];
   approvalsUnavailable: boolean;
+  companyCounts: PipelineFacetCount[];
 }
 
 export interface DrugPipelineEntry {
@@ -38,6 +40,8 @@ export interface DrugPipelineEntry {
   novel: boolean;
   enrollment: number;
   sourceUrl: string;
+  parentCompany: string;
+  hqCountry: string;
 }
 
 export interface PipelineFacetCount {
@@ -56,6 +60,7 @@ export interface DrugApproval {
   newMolecularEntity: boolean;
   modality: string;
   route: string;
+  parentCompany: string;
 }
 
 export interface FieldViolation {
@@ -112,6 +117,7 @@ export class PharmaServiceClient {
     if (req.modality != null && req.modality !== "") params.set("modality", String(req.modality));
     if (req.therapeuticArea != null && req.therapeuticArea !== "") params.set("therapeutic_area", String(req.therapeuticArea));
     if (req.novelOnly) params.set("novel_only", String(req.novelOnly));
+    if (req.company != null && req.company !== "") params.set("company", String(req.company));
     if (req.limit != null && req.limit !== 0) params.set("limit", String(req.limit));
     const url = this.baseURL + path + (params.toString() ? "?" + params.toString() : "");
 

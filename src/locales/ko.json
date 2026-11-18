@@ -2267,6 +2267,7 @@
       },
       "allModalities": "모든 신약 종류",
       "allAreas": "모든 치료 영역",
+      "allCompanies": "모든 기업",
       "novelOnly": "신약만 보기 (적응증 확대 제외)",
       "newDrug": "신약",
       "labelExpansion": "적응증 확대",
@@ -2290,8 +2291,11 @@
         "other": "기타"
       },
       "area": {
-        "oncology": "항암",
-        "metabolic": "대사",
+        "oncology_solid": "고형암",
+        "oncology_hematologic": "혈액암",
+        "obesity": "비만",
+        "diabetes": "당뇨",
+        "metabolic": "기타 대사",
         "neurology": "신경",
         "cardiovascular": "심혈관",
         "immunology": "면역",
@@ -2299,6 +2303,7 @@
         "respiratory": "호흡기",
         "psychiatry": "정신",
         "hematology": "혈액",
+        "ophthalmology": "안과",
         "other": "기타"
       },
       "errors": {

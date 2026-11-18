@@ -2564,6 +2564,7 @@
       },
       "allModalities": "Aina zote za dawa",
       "allAreas": "Nyanja zote za tiba",
+      "allCompanies": "Kampuni zote",
       "novelOnly": "Dawa mpya pekee (ficha upanuzi wa matumizi)",
       "newDrug": "MPYA",
       "labelExpansion": "UPANUZI",
@@ -2587,8 +2588,11 @@
         "other": "Nyingine"
       },
       "area": {
-        "oncology": "Saratani",
-        "metabolic": "Kimetaboliki",
+        "oncology_solid": "Uvimbe mgumu",
+        "oncology_hematologic": "Saratani za damu",
+        "obesity": "Unene uliopitiliza",
+        "diabetes": "Kisukari",
+        "metabolic": "Kimetaboliki nyingine",
         "neurology": "Neva",
         "cardiovascular": "Moyo na mishipa",
         "immunology": "Kinga",
@@ -2596,6 +2600,7 @@
         "respiratory": "Upumuaji",
         "psychiatry": "Afya ya akili",
         "hematology": "Damu",
+        "ophthalmology": "Macho",
         "other": "Nyingine"
       },
       "errors": {

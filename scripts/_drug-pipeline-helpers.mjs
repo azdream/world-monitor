@@ -1,3 +1,5 @@
+import { resolveParentCompany } from './_pharma-companies.mjs';
+
 // Pure helpers for seed-drug-pipeline.mjs — classification, name matching and
 // the decision-window heuristic. No I/O here so tests can import it directly.
 
@@ -6,9 +8,12 @@ export const MODALITIES = [
   'rna', 'vaccine', 'peptide_protein', 'other',
 ];
 
+// `metabolic` is what remains of the metabolic group once obesity and diabetes
+// are split out; oncology is always one of its two sub-areas.
 export const THERAPEUTIC_AREAS = [
-  'oncology', 'metabolic', 'neurology', 'cardiovascular', 'immunology',
-  'infectious', 'respiratory', 'psychiatry', 'hematology', 'other',
+  'oncology_solid', 'oncology_hematologic', 'obesity', 'diabetes', 'metabolic',
+  'neurology', 'cardiovascular', 'immunology', 'infectious', 'respiratory',
+  'psychiatry', 'hematology', 'ophthalmology', 'other',
 ];
 
 // Decision-window heuristic (months after primary completion):
@@ -124,12 +129,15 @@ export function resolveModality(name, interventionType, chemblHit) {
 }
 
 // Order matters: first match wins (e.g. lung cancer is oncology, not respiratory;
-// HIV is infectious, not immunology; asthma is respiratory, not immunology).
+// HIV is infectious, not immunology; asthma is respiratory, not immunology;
+// diabetic macular edema is ophthalmology, not metabolic). Registries are full
+// of bare abbreviations ("NSCLC", "T2DM"), so the text patterns carry them.
 const AREA_RULES = [
-  ['oncology', /neoplasms?/i, /cancer|carcinoma|tumou?r|lymphoma|leuk(a)?emia|myeloma|melanoma|sarcoma|glioma|glioblastoma|malignan/i],
+  ['oncology', /neoplasms?/i, /cancer|carcinoma|tumou?r|lymphoma|leuk(a)?emia|myeloma|melanoma|sarcoma|glioma|glioblastoma|malignan|\b(nsclc|sclc|cll|sll|aml|hcc|mds)\b/i],
   ['infectious', /^infections?$|virus diseases|bacterial infections|communicable diseases|mycoses|parasitic diseases/i, /\bhiv\b|hepatitis|covid|sars-cov|influenza|infection|tubercul|malaria|pneumonia|sepsis|\brsv\b/i],
+  ['ophthalmology', /^eye diseases$/i, /macular|retin(a|al|itis|opathy)|glaucoma|myopia|kerato|uveitis|dry eye|ocular|ophthalm|geographic atrophy|\bn?amd\b/i],
   ['hematology', /hematologic diseases|hemic and lymphatic diseases/i, /h(a)?emophilia|an(a)?emia|sickle cell|thalass(a)?emia|thrombocytopeni/i],
-  ['metabolic', /nutritional and metabolic diseases|endocrine system diseases/i, /diabet|obes|overweight|dyslipid|hypercholesterol|\bnash\b|\bmash\b|steatohepatitis/i],
+  ['metabolic', /nutritional and metabolic diseases|endocrine system diseases/i, /diabet|obes|overweight|weight (loss|management)|dyslipid|hypercholesterol|\bt[12]dm?\b|\bnash\b|\bmash\b|steatohepatitis/i],
   ['neurology', /nervous system diseases/i, /alzheimer|parkinson|epilep|migraine|multiple sclerosis|neuropath|\bals\b|amyotrophic|huntington|myasthenia|stroke/i],
   ['psychiatry', /mental disorders/i, /depress|schizo|bipolar|anxiety|\badhd\b|autism|substance use|insomnia/i],
   ['cardiovascular', /cardiovascular diseases/i, /heart|cardi|hypertension|atrial|coronary|atheroscl|thrombo/i],
@@ -137,19 +145,50 @@ const AREA_RULES = [
   ['immunology', /immune system diseases|skin and connective tissue diseases/i, /arthritis|psoria|lupus|dermatitis|colitis|crohn|eczema|alopecia|hidradenitis|spondyl/i],
 ];
 
+const HEME_MALIGNANCY_RE = /leuk(a)?emia|lymphoma|myeloma|myelodysplast|myeloproliferat|myelofibrosis|hematologic neoplasms|plasma cell|waldenstr|\b(cll|sll|aml|mds)\b/i;
+const OBESITY_RE = /obes|overweight|weight (loss|management)|adipos/i;
+const DIABETES_RE = /diabet|\bt[12]dm?\b|hyperglyc/i;
+
+// "Non-diabetic chronic kidney disease" is not a diabetes trial.
+function affirmed(condition) {
+  return String(condition || '').replace(/\bnon[- ]?(diabetic|obese|cancerous|malignant|infectious)\b/gi, ' ');
+}
+
+function refineMetabolic(meshTerms, conditions) {
+  // A trial can name both ("obesity with type 2 diabetes"): the first-listed
+  // condition is the registrant's primary one, so it decides. MeSH terms are
+  // the fallback; ancestors come last in that list and are too broad to help.
+  for (const text of [...conditions, ...meshTerms]) {
+    if (OBESITY_RE.test(text)) return 'obesity';
+    if (DIABETES_RE.test(text)) return 'diabetes';
+  }
+  return 'metabolic';
+}
+
 /**
- * @param {string[]} meshTerms MeSH condition terms + ancestors
+ * @param {string[]} meshTerms MeSH condition terms followed by their ancestors
  * @param {string[]} conditions free-text conditions as registered
  */
-export function classifyTherapeuticArea(meshTerms = [], conditions = []) {
-  for (const [area, meshRe] of AREA_RULES) {
-    if (meshTerms.some((t) => meshRe.test(t))) return area;
-  }
+export function classifyTherapeuticArea(meshTerms = [], rawConditions = []) {
+  const conditions = rawConditions.map(affirmed);
   const text = conditions.join(' | ');
-  for (const [area, , textRe] of AREA_RULES) {
-    if (textRe.test(text)) return area;
+  const byText = (value) => AREA_RULES.find(([, , textRe]) => textRe.test(value))?.[0];
+  // 1. The first-listed condition is the registrant's primary one. MeSH terms
+  //    are not tied to a condition, so a comorbidity listed second ("psoriatic
+  //    arthritis" + "obesity") would otherwise decide the area.
+  // 2. MeSH, for primaries the text patterns do not recognise.
+  // 3. Any condition's text.
+  const area = byText(conditions[0] ?? '')
+    ?? AREA_RULES.find(([, meshRe]) => meshTerms.some((t) => meshRe.test(t)))?.[0]
+    ?? byText(text)
+    ?? 'other';
+  if (area === 'oncology') {
+    return meshTerms.some((t) => HEME_MALIGNANCY_RE.test(t)) || HEME_MALIGNANCY_RE.test(text)
+      ? 'oncology_hematologic'
+      : 'oncology_solid';
   }
-  return 'other';
+  if (area === 'metabolic') return refineMetabolic(meshTerms, conditions);
+  return area;
 }
 
 /** Add months to "YYYY-MM" or "YYYY-MM-DD"; returns "YYYY-MM" or '' on bad input. */
@@ -228,13 +267,18 @@ export function buildPipelineEntry(study, chemblIndex) {
   const conditions = (p.conditionsModule?.conditions || []).filter(Boolean);
   const window = estimateDecisionWindow(pcd.date);
   const phases = p.designModule?.phases || [];
+  const sponsor = String(p.sponsorCollaboratorsModule?.leadSponsor?.name || '').slice(0, 80);
+  const parent = resolveParentCompany(sponsor);
 
   return {
     nctId,
     title: String(p.identificationModule?.briefTitle || '').slice(0, 160),
     candidate: String(lead.name).slice(0, 80),
     interventions: [...new Set(named.map((i) => String(i.name).slice(0, 60)))].slice(0, 4),
-    sponsor: String(p.sponsorCollaboratorsModule?.leadSponsor?.name || '').slice(0, 80),
+    sponsor,
+    // Omitted when the roll-up table has no entry (readers default to ''):
+    // most sponsors are unmapped, and the payload is held near 1 MB.
+    ...(parent ? { parentCompany: parent.name, hqCountry: parent.hq } : {}),
     phase: phases.includes('PHASE2') ? 'PHASE2_PHASE3' : 'PHASE3',
     status: p.statusModule?.overallStatus || '',
     modality,
@@ -269,6 +313,7 @@ export function buildApproval(result, fromDate, toDate, chemblIndex) {
   if (!approvalDate || approvalDate < fromDate || approvalDate > toDate) return null;
 
   const product = (result.products || [])[0] || {};
+  const approvalParent = resolveParentCompany(result.sponsor_name);
   const generic = result.openfda?.generic_name?.[0]
     || (product.active_ingredients || []).map((a) => a.name).filter(Boolean).join(' / ')
     || '';
@@ -283,6 +328,7 @@ export function buildApproval(result, fromDate, toDate, chemblIndex) {
     brandName: String(brand).slice(0, 80),
     genericName: String(generic).slice(0, 120),
     sponsor: String(result.sponsor_name || '').slice(0, 80),
+    ...(approvalParent ? { parentCompany: approvalParent.name } : {}),
     approvalDate,
     applicationType: type,
     reviewPriority: String(orig.review_priority || '').toUpperCase(),

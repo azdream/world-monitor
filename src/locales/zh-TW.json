@@ -2267,6 +2267,7 @@
       },
       "allModalities": "全部藥物型別",
       "allAreas": "全部治療領域",
+      "allCompanies": "所有企業",
       "novelOnly": "僅看新藥（隱藏適應症擴充套件）",
       "newDrug": "新藥",
       "labelExpansion": "適應症擴充套件",
@@ -2290,8 +2291,11 @@
         "other": "其他"
       },
       "area": {
-        "oncology": "腫瘤",
-        "metabolic": "代謝",
+        "oncology_solid": "實體瘤",
+        "oncology_hematologic": "血液腫瘤",
+        "obesity": "肥胖",
+        "diabetes": "糖尿病",
+        "metabolic": "其他代謝",
         "neurology": "神經",
         "cardiovascular": "心血管",
         "immunology": "免疫",
@@ -2299,6 +2303,7 @@
         "respiratory": "呼吸",
         "psychiatry": "精神",
         "hematology": "血液",
+        "ophthalmology": "眼科",
         "other": "其他"
       },
       "errors": {

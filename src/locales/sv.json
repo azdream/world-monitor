@@ -1893,6 +1893,7 @@
       },
       "allModalities": "Alla läkemedelstyper",
       "allAreas": "Alla terapiområden",
+      "allCompanies": "Alla företag",
       "novelOnly": "Endast nya läkemedel (dölj utökade indikationer)",
       "newDrug": "NY",
       "labelExpansion": "UTÖKNING",
@@ -1916,8 +1917,11 @@
         "other": "Övrigt"
       },
       "area": {
-        "oncology": "Onkologi",
-        "metabolic": "Metabolism",
+        "oncology_solid": "Solida tumörer",
+        "oncology_hematologic": "Blodcancer",
+        "obesity": "Fetma",
+        "diabetes": "Diabetes",
+        "metabolic": "Övrigt metabolt",
         "neurology": "Neurologi",
         "cardiovascular": "Hjärta-kärl",
         "immunology": "Immunologi",
@@ -1925,6 +1929,7 @@
         "respiratory": "Luftvägar",
         "psychiatry": "Psykiatri",
         "hematology": "Hematologi",
+        "ophthalmology": "Oftalmologi",
         "other": "Övrigt"
       },
       "errors": {

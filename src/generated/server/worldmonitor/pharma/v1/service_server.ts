@@ -5,6 +5,7 @@ export interface ListDrugPipelineRequest {
   modality: string;
   therapeuticArea: string;
   novelOnly: boolean;
+  company: string;
   limit: number;
 }
 
@@ -17,6 +18,7 @@ export interface ListDrugPipelineResponse {
   unavailable: boolean;
   approvals: DrugApproval[];
   approvalsUnavailable: boolean;
+  companyCounts: PipelineFacetCount[];
 }
 
 export interface DrugPipelineEntry {
@@ -38,6 +40,8 @@ export interface DrugPipelineEntry {
   novel: boolean;
   enrollment: number;
   sourceUrl: string;
+  parentCompany: string;
+  hqCountry: string;
 }
 
 export interface PipelineFacetCount {
@@ -56,6 +60,7 @@ export interface DrugApproval {
   newMolecularEntity: boolean;
   modality: string;
   route: string;
+  parentCompany: string;
 }
 
 export interface FieldViolation {
@@ -123,6 +128,7 @@ export function createPharmaServiceRoutes(
             modality: params.get("modality") ?? "",
             therapeuticArea: params.get("therapeutic_area") ?? "",
             novelOnly: params.get("novel_only") === "true",
+            company: params.get("company") ?? "",
             limit: Number(params.get("limit") ?? "0"),
           };
           if (options?.validateRequest) {

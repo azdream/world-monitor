@@ -2561,6 +2561,7 @@
       },
       "allModalities": "Minden gyógyszertípus",
       "allAreas": "Minden terápiás terület",
+      "allCompanies": "Minden vállalat",
       "novelOnly": "Csak új gyógyszerek (indikációbővítések elrejtése)",
       "newDrug": "ÚJ",
       "labelExpansion": "BŐVÍTÉS",
@@ -2584,8 +2585,11 @@
         "other": "Egyéb"
       },
       "area": {
-        "oncology": "Onkológia",
-        "metabolic": "Anyagcsere",
+        "oncology_solid": "Szolid tumorok",
+        "oncology_hematologic": "Vérképzőszervi daganatok",
+        "obesity": "Elhízás",
+        "diabetes": "Cukorbetegség",
+        "metabolic": "Egyéb anyagcsere",
         "neurology": "Neurológia",
         "cardiovascular": "Szív- és érrendszer",
         "immunology": "Immunológia",
@@ -2593,6 +2597,7 @@
         "respiratory": "Légzőszervi",
         "psychiatry": "Pszichiátria",
         "hematology": "Hematológia",
+        "ophthalmology": "Szemészet",
         "other": "Egyéb"
       },
       "errors": {

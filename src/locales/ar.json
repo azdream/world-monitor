@@ -2317,6 +2317,7 @@
       },
       "allModalities": "كل أنواع الأدوية",
       "allAreas": "كل المجالات العلاجية",
+      "allCompanies": "كل الشركات",
       "novelOnly": "الأدوية الجديدة فقط (إخفاء توسيع دواعي الاستعمال)",
       "newDrug": "جديد",
       "labelExpansion": "توسيع",
@@ -2340,8 +2341,11 @@
         "other": "أخرى"
       },
       "area": {
-        "oncology": "الأورام",
-        "metabolic": "الأيض",
+        "oncology_solid": "أورام صلبة",
+        "oncology_hematologic": "سرطانات الدم",
+        "obesity": "السمنة",
+        "diabetes": "السكري",
+        "metabolic": "أمراض أيضية أخرى",
         "neurology": "الأعصاب",
         "cardiovascular": "القلب والأوعية",
         "immunology": "المناعة",
@@ -2349,6 +2353,7 @@
         "respiratory": "الجهاز التنفسي",
         "psychiatry": "الطب النفسي",
         "hematology": "أمراض الدم",
+        "ophthalmology": "طب العيون",
         "other": "أخرى"
       },
       "errors": {

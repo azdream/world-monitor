@@ -1024,6 +1024,7 @@
       "scripts/_disease-outbreaks-helpers.mjs",
       "scripts/_drug-pipeline-helpers.mjs",
       "scripts/_html-entities.mjs",
+      "scripts/_pharma-companies.mjs",
       "scripts/_proxy-utils.cjs",
       "scripts/_seed-contract.mjs",
       "scripts/_seed-envelope-source.mjs",
