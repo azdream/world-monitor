@@ -21,8 +21,15 @@ export const PREMIUM_RPC_PATHS = new Set<string>([
   '/api/intelligence/v1/get-regional-snapshot',
   '/api/intelligence/v1/get-regime-history',
   '/api/intelligence/v1/get-regional-brief',
+  // Historical intelligence memory (#5694). Read-only over the Convex history
+  // store; the two semantic routes also spend one embeddings call per cache
+  // miss, which is why they carry fail-closed rate policies as well.
+  '/api/intelligence/v1/search-intel-history',
+  '/api/intelligence/v1/get-intel-timeline',
+  '/api/intelligence/v1/get-similar-events',
   '/api/resilience/v1/get-resilience-score',
   '/api/resilience/v1/get-resilience-ranking',
+  '/api/resilience/v1/get-food-stocks',
   '/api/supply-chain/v1/get-country-chokepoint-index',
   '/api/supply-chain/v1/get-bypass-options',
   '/api/supply-chain/v1/get-country-cost-shock',

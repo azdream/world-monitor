@@ -1,7 +1,13 @@
 export const DEBUGBEAR_RUM_SCRIPT_SRC = 'https://cdn.debugbear.com/lpMwA9KpC6pf.js';
-export const DEBUGBEAR_RUM_SAMPLE_RATE = 100;
+// 10% sampling. 100% overran the DebugBear RUM monthly quota (~529k/500k, 2026-07). The R2-origin
+// experiment that justified full sampling is a no-go (KTD7 feasibility failure); ongoing web-vitals
+// RUM needs only a fraction. Keep in sync with pro-test/src/debugbear-rum.ts (asserted by the test).
+export const DEBUGBEAR_RUM_SAMPLE_RATE = 10;
 const DEBUGBEAR_RUM_SCRIPT_PATHNAME = new URL(DEBUGBEAR_RUM_SCRIPT_SRC).pathname;
-const DEBUGBEAR_RUM_HOSTS = new Set([
+/** Every production host the RUM script loads on. Exported so
+ * `tests/sentry-allow-urls.test.mts` can assert the Sentry ingest allowlist
+ * covers the same population instead of restating it (#6545). */
+export const DEBUGBEAR_RUM_HOSTS = new Set([
   'worldmonitor.app',
   'www.worldmonitor.app',
   'tech.worldmonitor.app',

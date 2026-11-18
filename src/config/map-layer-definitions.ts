@@ -76,7 +76,9 @@ export const LAYER_REGISTRY: Record<keyof MapLayers, LayerDefinition> = {
   ucdpEvents:               def('ucdpEvents',               '&#9876;',   'ucdpEvents',               'Armed Conflict Events'),
   displacement:             def('displacement',             '&#128101;', 'displacementFlows',        'Displacement Flows'),
   climate:                  def('climate',                  '&#127787;', 'climateAnomalies',         'Climate Anomalies'),
-  weather:                  def('weather',                  '&#9928;',   'weatherAlerts',            'Weather Alerts'),
+  weather:                  def('weather',                  '&#9928;',   'weatherAlerts',            'US Weather Alerts (NWS)'),
+  canadaRoads:              def('canadaRoads',              '&#128679;', 'canadaRoads',              'Canada Roads (Ontario, Alberta, Toronto, BC)', ['flat'], undefined, true),
+  canadaAlerts:             def('canadaAlerts',             '&#9888;',   'canadaAlerts',             'Canada Alerts (Alberta Emergency Alert)', ['flat'], undefined, true),
   outages:                  def('outages',                  '&#128225;', 'internetOutages',          'Internet Disruptions'),
   cyberThreats:             def('cyberThreats',             '&#128737;', 'cyberThreats',             'Cyber Threats'),
   natural:                  def('natural',                  '&#127755;', 'naturalEvents',            'Natural Events'),
@@ -128,6 +130,8 @@ export const V1_LAYER_EXPLANATION_KEYS = [
   'ucdpEvents',
   'ciiChoropleth',
   'natural',
+  'weather',
+  'canadaRoads', 'canadaAlerts',
   'flights',
   'ais',
   'waterways',
@@ -194,15 +198,63 @@ export const LAYER_EXPLANATIONS: Partial<Record<keyof MapLayers, LayerExplanatio
       'Low-severity GDACS alerts are filtered out to keep the map readable.',
       'EONET wildfires are freshness-filtered, so older open events may not appear as active map points.',
     ],
-    related: ['Natural Events layer popups', 'Weather Alerts', 'Country brief natural signals'],
+    related: ['Natural Events layer popups', 'US Weather Alerts (NWS)', 'Country brief natural signals'],
     evidence: ['docs/data-sources.mdx', 'docs/architecture.mdx', 'server/worldmonitor/natural/v1/list-natural-events.ts'],
+  },
+  weather: {
+    key: 'weather',
+    coverage: 'curated',
+    category: 'Weather',
+    purpose: 'Shows active severe-weather alerts for the United States from the official national warning feed.',
+    source: 'United States National Weather Service (NWS) active alerts API, seeded through the WorldMonitor relay.',
+    freshness: 'NWS alerts are seeded every 15 minutes by the relay and monitored against a 45-minute freshness budget.',
+    confidence: 'Authoritative for active NWS alerts, subject to upstream publication timing and mapped alert geometry.',
+    limitations: [
+      'Does not include official national weather warnings outside the United States.',
+      'Alerts without usable polygon geometry may not appear as map overlays.',
+    ],
+    related: ['Natural Events layer', 'Weather alert popups', 'Data freshness status'],
+    evidence: ['scripts/ais-relay.cjs', 'api/health.js', 'src/services/weather.ts'],
+  },
+  canadaRoads: {
+    key: 'canadaRoads',
+    coverage: 'curated',
+    category: 'Transport',
+    purpose: 'Shows official road incidents, alerts, conditions, closures, construction, and hazards across supported Canadian jurisdictions.',
+    source: 'Ontario 511 and Alberta 511 provincial feeds, City of Toronto Road Restrictions, and DriveBC Open511, seeded through WorldMonitor.',
+    freshness: 'Each road source is seeded every 15 minutes and monitored against a 45-minute freshness budget.',
+    confidence: 'Authoritative for the supported provincial and municipal publishers, subject to upstream publication timing and mapped geometry.',
+    limitations: [
+      'Manitoba 511 is not ingested yet; it must use this same canadaRoads layer key when it ships.',
+      'Alberta 511 roadconditions is not ingested (the vendor endpoint 404s); live Alberta paint is events and alerts only.',
+      'Provincial alerts without coordinates do not appear as map dots.',
+      'Road-condition polylines may simplify complex highway geometry.',
+    ],
+    related: ['US Weather Alerts (NWS)', 'Data freshness status'],
+    evidence: ['scripts/seed-provincial-511.mjs', 'scripts/seed-toronto-road-restrictions.mjs', 'scripts/seed-open511.mjs', 'api/health.js', 'src/services/canada-roads.ts'],
+  },
+  canadaAlerts: {
+    key: 'canadaAlerts',
+    coverage: 'curated',
+    category: 'Emergency Alerts',
+    purpose: 'Shows active Alberta Emergency Alert warnings as map dots so analysts can see provincial public-safety alerts alongside US NWS weather.',
+    source: 'Alberta Emergency Alert full Atom feed (www.alberta.ca/data/aea/rss/feed-full.atom), seeded through seed-alberta-emergency-alert. CAP area polygons become centroids; records without geometry use the Alberta province centroid.',
+    freshness: 'Alberta Emergency Alert is seeded every 15 minutes and monitored against a 45-minute freshness budget. An empty feed (no active alerts) is a valid zero-record success.',
+    confidence: 'Authoritative for alerts published by Alberta Emergency Alert, subject to upstream publication timing and mapped alert geometry.',
+    limitations: [
+      'Alberta Emergency Alert only in this slice; other provinces are a follow-up and must share the canadaAlerts layer key.',
+      'Does not replace US NWS weather alerts or Ontario/Toronto road layers.',
+      'Entries without a mappable severity (CAP severity/category/urgency or Alberta colour/level in the title) are dropped rather than invented.',
+    ],
+    related: ['US Weather Alerts (NWS)', 'Natural Events layer', 'Data freshness status'],
+    evidence: ['scripts/seed-alberta-emergency-alert.mjs', 'api/health.js', 'src/services/canada-alerts.ts'],
   },
   flights: {
     key: 'flights',
     coverage: 'curated',
     category: 'Aviation',
     purpose: 'Highlights airport disruption, closures, NOTAM-derived airspace issues, and live aircraft positions when tracking is available.',
-    source: 'FAA ASWS, AviationStack, ICAO NOTAMs, OpenSky/Wingbits aircraft tracking, and the aviation service.',
+    source: 'FAA ASWS, AviationStack, ICAO NOTAMs, adsb.lol (ODbL), Wingbits, legacy OpenSky service recovery, optional non-commercial airplanes.live/adsb.fi gap-fill, and the aviation service.',
     freshness: 'Airport disruption seeds run on a 30-minute cadence; the aviation panel also refreshes operational views on a 5-minute polling cycle.',
     confidence: 'Best for disruption triage; individual live aircraft coverage depends on ADS-B availability and configured providers.',
     limitations: [
@@ -295,7 +347,7 @@ const VARIANT_LAYER_ORDER: Record<MapVariant, Array<keyof MapLayers>> = {
     'bases', 'nuclear', 'irradiators', 'radiationWatch', 'spaceports',
     'cables', 'pipelines', 'storageFacilities', 'fuelShortages', 'datacenters', 'military',
     'ais', 'tradeRoutes', 'flights', 'protests',
-    'ucdpEvents', 'displacement', 'climate', 'weather',
+    'ucdpEvents', 'displacement', 'climate', 'weather', 'canadaRoads', 'canadaAlerts',
     'outages', 'cyberThreats', 'natural', 'fires',
     'waterways', 'economic', 'minerals', 'gpsJamming',
     'satellites', 'ciiChoropleth', 'resilienceScore', 'sanctions', 'dayNight', 'webcams',
@@ -309,7 +361,7 @@ const VARIANT_LAYER_ORDER: Record<MapVariant, Array<keyof MapLayers>> = {
   finance: [
     'stockExchanges', 'financialCenters', 'centralBanks', 'commodityHubs',
     'gulfInvestments', 'tradeRoutes', 'cables', 'pipelines',
-    'outages', 'weather', 'economic', 'waterways',
+    'outages', 'weather', 'canadaRoads', 'economic', 'waterways', 'canadaAlerts',
     'resilienceScore', 'natural', 'cyberThreats', 'sanctions', 'dayNight',
   ],
   happy: [
@@ -320,14 +372,14 @@ const VARIANT_LAYER_ORDER: Record<MapVariant, Array<keyof MapLayers>> = {
     'miningSites', 'processingPlants', 'commodityPorts', 'commodityHubs',
     'minerals', 'pipelines', 'waterways', 'tradeRoutes',
     'ais', 'economic', 'fires', 'climate',
-    'resilienceScore', 'natural', 'weather', 'outages', 'sanctions', 'dayNight',
+    'resilienceScore', 'natural', 'weather', 'canadaRoads', 'outages', 'sanctions', 'dayNight', 'canadaAlerts',
   ],
   energy: [
     // Core energy infrastructure — mirror of ENERGY_MAP_LAYERS in panels.ts
     'pipelines', 'storageFacilities', 'fuelShortages', 'waterways', 'commodityPorts', 'commodityHubs',
     'ais', 'liveTankers', 'tradeRoutes', 'minerals',
     // Energy-adjacent context
-    'sanctions', 'fires', 'climate', 'weather', 'outages', 'natural',
+    'sanctions', 'fires', 'climate', 'weather', 'canadaRoads', 'outages', 'natural', 'canadaAlerts',
     'resilienceScore', 'dayNight',
   ],
 };
@@ -344,7 +396,8 @@ const I18N_PREFIX = 'components.deckgl.layers.';
 // see src/services/maritime/index.ts and tests/browser-bundle-secret-guard.
 const IRAN_ATTACKS_ENABLED = typeof window !== 'undefined' && import.meta.env.VITE_ENABLE_IRAN_ATTACKS === 'true';
 
-function isSunsetLayer(key: keyof MapLayers): boolean {
+/** True when a layer is feature-sunset and must not appear in any picker. */
+export function isSunsetLayer(key: keyof MapLayers): boolean {
   return !IRAN_ATTACKS_ENABLED && key === 'iranAttacks';
 }
 
@@ -394,6 +447,152 @@ export function isLayerExecutable(
   return true;
 }
 
+/**
+ * Whether the user may enable a layer given their premium status.
+ *
+ * Matches DeckGLMap's layer-picker contract:
+ *   - `premium: 'locked'` → disabled checkbox for free users (must not enable)
+ *   - `premium: 'enhanced'` → PRO badge only; free users can still toggle
+ *   - no premium flag → free for everyone
+ *
+ * Used by CMD+K (`search-manager`) and programmatic enable paths so free
+ * users cannot force a locked layer on (which left a stuck checked+disabled
+ * checkbox and could mutual-exclude a free layer — #6045).
+ */
+export function isLayerEntitled(
+  layerKey: keyof MapLayers,
+  hasPremium: boolean,
+): boolean {
+  const def = LAYER_REGISTRY[layerKey];
+  if (!def) return false;
+  if (def.premium === 'locked' && !hasPremium) return false;
+  return true;
+}
+
+/**
+ * Whether a layer toggle may be applied from the current state.
+ *
+ * A free user may turn a locked layer off when stale state survives from an
+ * older build, but must not be able to turn it on. Keeping that distinction
+ * makes every toggle entry point able to heal old state without reopening the
+ * activation path (#6045).
+ */
+export function isLayerToggleAllowed(
+  layerKey: keyof MapLayers,
+  currentlyEnabled: boolean | undefined,
+  hasPremium: boolean,
+): boolean {
+  if (!LAYER_REGISTRY[layerKey]) return false;
+  return currentlyEnabled === true || isLayerEntitled(layerKey, hasPremium);
+}
+
+/**
+ * Whether a CMD+K layer command may toggle the layer in the current map
+ * context. This keeps renderer compatibility and entitlement in one policy
+ * used by the palette filter and its dispatch paths.
+ */
+export function isLayerCommandAllowed(
+  layerKey: keyof MapLayers,
+  currentlyEnabled: boolean | undefined,
+  currentRenderer: MapRenderer,
+  isDeckGLActive: boolean,
+  hasPremium: boolean,
+): boolean {
+  return isLayerExecutable(layerKey, currentRenderer, isDeckGLActive)
+    && isLayerToggleAllowed(layerKey, currentlyEnabled, hasPremium);
+}
+
+/**
+ * Whether locked-layer state may be persisted as a free-tier decision.
+ *
+ * A pending auth session is intentionally not enough: a paying user is
+ * indistinguishable from an anonymous user during boot. The explicit fallback
+ * signal is the bounded exception used when that session never settles.
+ */
+export function shouldSanitizeLockedLayers(
+  hasPremium: boolean,
+  tierResolved: boolean,
+  fallbackActive = false,
+): boolean {
+  return !hasPremium && (tierResolved || fallbackActive);
+}
+
+/**
+ * Force locked premium layers off when the user is not entitled.
+ * Heals stuck localStorage/state left by pre-#6045 CMD+K activation.
+ * Does not mutate the input object.
+ */
+export function sanitizeLockedLayers(
+  layers: MapLayers,
+  hasPremium: boolean,
+): MapLayers {
+  if (hasPremium) return layers;
+  let changed = false;
+  const sanitized = { ...layers };
+  for (const key of Object.keys(sanitized) as Array<keyof MapLayers>) {
+    if (sanitized[key] && LAYER_REGISTRY[key]?.premium === 'locked') {
+      sanitized[key] = false;
+      changed = true;
+    }
+  }
+  return changed ? sanitized : layers;
+}
+
+export interface LockedLayerOwnershipResult {
+  layers: MapLayers;
+  gateOwned: Set<string>;
+}
+
+export function mapLayerStatesEqual(a: MapLayers, b: MapLayers): boolean {
+  const keys = Object.keys(a) as Array<keyof MapLayers>;
+  return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
+}
+
+/**
+ * Sanitize locked layers while remembering which enabled preferences the
+ * free-tier gate forced off. Existing ownership is retained across idempotent
+ * reconciliation passes where the persisted layer is already false.
+ */
+export function sanitizeLockedLayersWithOwnership(
+  layers: MapLayers,
+  existingGateOwned: ReadonlySet<string>,
+): LockedLayerOwnershipResult {
+  const gateOwned = new Set(
+    [...existingGateOwned].filter((key) => (
+      LAYER_REGISTRY[key as keyof MapLayers]?.premium === 'locked'
+    )),
+  );
+  for (const key of Object.keys(layers) as Array<keyof MapLayers>) {
+    if (layers[key] && LAYER_REGISTRY[key]?.premium === 'locked') {
+      gateOwned.add(key);
+    }
+  }
+  return {
+    layers: sanitizeLockedLayers(layers, false),
+    gateOwned,
+  };
+}
+
+/** Restore only valid premium layers previously disabled by the free gate. */
+export function restoreGateOwnedLockedLayers(
+  layers: MapLayers,
+  gateOwned: ReadonlySet<string>,
+): MapLayers {
+  let changed = false;
+  const restored = { ...layers };
+  for (const rawKey of gateOwned) {
+    const key = rawKey as keyof MapLayers;
+    // CII and resilience are mutually exclusive choropleths. Ownership can
+    // outlive a later user choice to enable CII while free; that stale marker
+    // must be consumed without overriding the newer CII preference.
+    if (key === 'resilienceScore' && restored.ciiChoropleth === true) continue;
+    if (LAYER_REGISTRY[key]?.premium !== 'locked' || restored[key] === true) continue;
+    restored[key] = true;
+    changed = true;
+  }
+  return changed ? restored : layers;
+}
+
 export const LAYER_SYNONYMS: Record<string, Array<keyof MapLayers>> = {
   aviation: ['flights'],
   flight: ['flights'],
@@ -428,7 +627,19 @@ export const LAYER_SYNONYMS: Record<string, Array<keyof MapLayers>> = {
   typhoon: ['weather', 'natural'],
   cyclone: ['weather', 'natural'],
   flood: ['weather', 'natural'],
+  aea: ['canadaAlerts'],
   wildfire: ['fires'],
+  road: ['canadaRoads'],
+  roads: ['canadaRoads'],
+  traffic: ['canadaRoads'],
+  ontario: ['canadaRoads'],
+  // Both sides of the merge claimed this alias: Alberta 511 roads (#6612) and
+  // Alberta Emergency Alert (#6610). Searching "alberta" should surface both.
+  alberta: ['canadaRoads', 'canadaAlerts'],
+  toronto: ['canadaRoads'],
+  britishcolumbia: ['canadaRoads'],
+  drivebc: ['canadaRoads'],
+  highway: ['canadaRoads'],
   forest: ['fires'],
   refugee: ['displacement'],
   migration: ['displacement'],

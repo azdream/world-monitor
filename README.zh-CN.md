@@ -1,6 +1,6 @@
 # World Monitor
 
-[English](README.md)
+[English](README.md) | [日本語](README.ja-JP.md)
 
 **实时全球情报仪表盘** — 在统一的态势感知界面中，汇集 AI 驱动的新闻聚合、地缘政治监测和基础设施追踪。
 
@@ -51,14 +51,14 @@
 ## 功能概览
 
 - **500+ 精选新闻源**，覆盖 15 个类别，并由 AI 综合生成简报
-- **双地图引擎** — 3D 地球仪（globe.gl）和 WebGL 平面地图（deck.gl），提供 56 种地图图层
+- **双地图引擎** — 3D 地球仪（globe.gl）和 WebGL 平面地图（deck.gl），提供 58 种地图图层
 - **跨信息流关联** — 汇聚军事、经济、灾害和升级信号
 - **国家不稳定指数（CII）** — 面向 31 个一级国家的服务器权威 CII v8 压力评分
 - **金融雷达** — 29 家证券交易所、大宗商品、加密货币，以及 7 信号市场综合指标
 - **本地 AI** — 通过 Ollama 运行全部功能，无需 API 密钥
 - **6 个站点变体**，均来自同一代码库（World Monitor、Tech Monitor、Finance Monitor、Commodity Monitor、Happy Monitor、Energy Monitor）
 - **原生桌面应用**（Tauri 2），支持 macOS、Windows 和 Linux
-- **25 种语言**，提供本地语言信息流和 RTL 支持
+- **28 种语言**，提供本地语言信息流和 RTL 支持
 
 完整的功能清单、架构、数据源和算法，请参阅**[文档](https://www.worldmonitor.app/docs/zh/documentation)**。
 
@@ -111,7 +111,7 @@ npm run dev:energy     # energy.worldmonitor.app
 | **前端** | Vanilla TypeScript、Vite、globe.gl + Three.js、deck.gl + MapLibre GL |
 | **桌面** | Tauri 2（Rust）与 Node.js sidecar |
 | **AI/ML** | Ollama / Groq / OpenRouter、Transformers.js（浏览器端） |
-| **API 契约** | Protocol Buffers（279 个 proto、35 项服务）、sebuf HTTP 注解 |
+| **API 契约** | Protocol Buffers（301 个 proto、37 项服务）、sebuf HTTP 注解 |
 | **部署** | Vercel Edge Functions（60+）、Railway 中继、Tauri、PWA |
 | **缓存** | Redis（Upstash）、3 层缓存、CDN、service worker |
 
@@ -147,7 +147,7 @@ World Monitor 同时为智能体、脚本和浏览器而构建：
 
 ## 数据源
 
-WorldMonitor 汇聚来自地缘政治、金融、能源、气候、航空、网络、军事、基础设施和新闻情报领域的 65+ 个外部提供商与 API；其内容通过 500+ 个精选信息流呈现，并由覆盖 35 个来源组的新鲜度监控器追踪。有关提供商、信息流层级和采集方法，请参阅完整的[数据源目录](https://www.worldmonitor.app/docs/zh/data-sources)。
+WorldMonitor 汇聚来自地缘政治、金融、能源、气候、航空、网络、军事、基础设施和新闻情报领域的 528+ 个外部上游主机；其内容通过 500+ 个精选信息流呈现，并由覆盖 35 个来源组的新鲜度监控器追踪。有关提供商、信息流层级和采集方法，请参阅完整的[数据源目录](https://www.worldmonitor.app/docs/zh/data-sources)。
 
 ---
 

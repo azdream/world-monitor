@@ -42,6 +42,21 @@ function assertNoMatch(relativePath, text, pattern, label) {
 }
 
 describe('project license docs', () => {
+  it('keeps the canonical AGPL header first and project notices below the complete text', () => {
+    const license = readFileSync(join(root, 'LICENSE'), 'utf8');
+    const firstContentLine = license.split('\n').find((line) => line.trim().length > 0);
+    const agplEnd = license.indexOf('END OF TERMS AND CONDITIONS');
+    const projectHeader = license.indexOf('World Monitor — Real-time global intelligence dashboard');
+    const projectCopyright = license.indexOf('Copyright (C) 2024-2026 Elie Habib');
+    const projectNotice = license.indexOf('\nThis program is free software:');
+
+    assert.equal(firstContentLine?.trim(), 'GNU AFFERO GENERAL PUBLIC LICENSE', 'root LICENSE must start with the canonical AGPL header');
+    assert.ok(agplEnd >= 0, 'root LICENSE must contain the complete AGPL text');
+    assert.ok(projectHeader > agplEnd, 'project header must follow the complete AGPL text');
+    assert.ok(projectCopyright > agplEnd, 'project copyright must follow the complete AGPL text');
+    assert.ok(projectNotice > agplEnd, 'project notice must follow the complete AGPL text');
+  });
+
   it('do not claim AGPL prohibits commercial use', () => {
     for (const { relativePath, text } of readProjectLicenseDocs()) {
       assertNoMatch(relativePath, text, /AGPL[\s\S]{0,160}non-?commercial/i, 'AGPL non-commercial framing');
@@ -76,5 +91,47 @@ describe('project license docs', () => {
       /does not grant rights to use the World Monitor name, logo, visual identity, or official project branding/i,
       'license docs must separate trademark rights from AGPL code rights',
     );
+  });
+
+  it('defines each hosted-service plan license without conflating it with the code license', () => {
+    const terms = readFileSync(join(root, 'docs/terms.mdx'), 'utf8');
+
+    for (const label of [
+      'Personal license (Pro)',
+      'Commercial license (Pro Business)',
+      'Commercial license — for your organization (API Starter)',
+      'Commercial license — for your customers (API Business)',
+    ]) {
+      assert.match(terms, new RegExp(label.replace(/[()]/g, '\\$&'), 'i'));
+    }
+    assert.match(terms, /customer-facing product/i);
+    assert.match(terms, /standalone database or substantially similar feed/i);
+    assert.match(terms, /source code remains subject to AGPL-3\.0-only/i);
+    assert.match(terms, /official thin client packages remain subject to MIT/i);
+  });
+
+  it('keeps hosted-service attribution guidance consistent across legal and pricing docs', () => {
+    const documents = [
+      {
+        relativePath: 'docs/terms.mdx',
+        sourceNoticePattern: /must still preserve any source-specific citation/i,
+      },
+      {
+        relativePath: 'docs/pricing.mdx',
+        sourceNoticePattern: /Source-specific notices supplied with an output still apply/i,
+      },
+      {
+        relativePath: 'public/pricing.md',
+        sourceNoticePattern: /Source-specific notices supplied with an output still apply/i,
+      },
+    ];
+
+    for (const { relativePath, sourceNoticePattern } of documents) {
+      const text = readFileSync(join(root, relativePath), 'utf8');
+
+      assert.match(text, /(?:Attribution to World Monitor|World Monitor attribution) is optional/i);
+      assert.match(text, /"Source: World Monitor" or "via World Monitor" is sufficient/i);
+      assert.match(text, sourceNoticePattern);
+    }
   });
 });
