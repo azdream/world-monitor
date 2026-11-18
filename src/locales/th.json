@@ -2267,6 +2267,7 @@
       },
       "allModalities": "ยาทุกประเภท",
       "allAreas": "ทุกกลุ่มโรค",
+      "allCompanies": "ทุกบริษัท",
       "novelOnly": "เฉพาะยาใหม่ (ซ่อนการขยายข้อบ่งใช้)",
       "newDrug": "ยาใหม่",
       "labelExpansion": "ขยายข้อบ่งใช้",
@@ -2290,8 +2291,11 @@
         "other": "อื่นๆ"
       },
       "area": {
-        "oncology": "มะเร็ง",
-        "metabolic": "เมตาบอลิก",
+        "oncology_solid": "มะเร็งก้อนเนื้อ",
+        "oncology_hematologic": "มะเร็งเม็ดเลือด",
+        "obesity": "โรคอ้วน",
+        "diabetes": "เบาหวาน",
+        "metabolic": "เมตาบอลิกอื่น ๆ",
         "neurology": "ระบบประสาท",
         "cardiovascular": "หัวใจและหลอดเลือด",
         "immunology": "ภูมิคุ้มกัน",
@@ -2299,6 +2303,7 @@
         "respiratory": "ระบบทางเดินหายใจ",
         "psychiatry": "จิตเวช",
         "hematology": "โลหิตวิทยา",
+        "ophthalmology": "จักษุวิทยา",
         "other": "อื่นๆ"
       },
       "errors": {

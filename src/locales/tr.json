@@ -2277,6 +2277,7 @@
       },
       "allModalities": "Tüm ilaç türleri",
       "allAreas": "Tüm tedavi alanları",
+      "allCompanies": "Tüm şirketler",
       "novelOnly": "Yalnızca yeni ilaçlar (endikasyon genişletmelerini gizle)",
       "newDrug": "YENİ",
       "labelExpansion": "GENİŞLETME",
@@ -2300,8 +2301,11 @@
         "other": "Diğer"
       },
       "area": {
-        "oncology": "Onkoloji",
-        "metabolic": "Metabolik",
+        "oncology_solid": "Solid tümörler",
+        "oncology_hematologic": "Kan kanserleri",
+        "obesity": "Obezite",
+        "diabetes": "Diyabet",
+        "metabolic": "Diğer metabolik",
         "neurology": "Nöroloji",
         "cardiovascular": "Kardiyovasküler",
         "immunology": "İmmünoloji",
@@ -2309,6 +2313,7 @@
         "respiratory": "Solunum",
         "psychiatry": "Psikiyatri",
         "hematology": "Hematoloji",
+        "ophthalmology": "Oftalmoloji",
         "other": "Diğer"
       },
       "errors": {

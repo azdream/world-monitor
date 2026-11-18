@@ -2561,6 +2561,7 @@
       },
       "allModalities": "सभी दवा प्रकार",
       "allAreas": "सभी चिकित्सा क्षेत्र",
+      "allCompanies": "सभी कंपनियाँ",
       "novelOnly": "केवल नई दवाएँ (संकेत विस्तार छिपाएँ)",
       "newDrug": "नई",
       "labelExpansion": "विस्तार",
@@ -2584,8 +2585,11 @@
         "other": "अन्य"
       },
       "area": {
-        "oncology": "कैंसर",
-        "metabolic": "चयापचय",
+        "oncology_solid": "ठोस ट्यूमर",
+        "oncology_hematologic": "रक्त कैंसर",
+        "obesity": "मोटापा",
+        "diabetes": "मधुमेह",
+        "metabolic": "अन्य चयापचय",
         "neurology": "तंत्रिका विज्ञान",
         "cardiovascular": "हृदय रोग",
         "immunology": "प्रतिरक्षा विज्ञान",
@@ -2593,6 +2597,7 @@
         "respiratory": "श्वसन",
         "psychiatry": "मनोरोग",
         "hematology": "रक्त विज्ञान",
+        "ophthalmology": "नेत्र रोग",
         "other": "अन्य"
       },
       "errors": {

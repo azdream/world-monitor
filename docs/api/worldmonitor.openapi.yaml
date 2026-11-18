@@ -29194,6 +29194,12 @@ paths:
                   example: true
                   schema:
                     type: boolean
+                - name: company
+                  in: query
+                  required: false
+                  example: "example"
+                  schema:
+                    type: string
                 - name: limit
                   in: query
                   description: Default 200, max 500.
@@ -29226,6 +29232,9 @@ paths:
                                 "areaCounts":
                                     - "count": 1
                                       "key": "example"
+                                "companyCounts":
+                                    - "count": 1
+                                      "key": "example"
                                 "entries":
                                     - "candidate": "2026-01-15"
                                       "conditions":
@@ -29233,7 +29242,6 @@ paths:
                                       "enrollment": 1
                                       "expectedDecisionFrom": "example"
                                       "expectedDecisionTo": "example"
-                                "generatedAt": "2026-01-15T12:00:00Z"
                             schema:
                                 $ref: '#/components/schemas/worldmonitor_pharma_v1_ListDrugPipelineResponse'
                 "400":
@@ -60234,6 +60242,8 @@ components:
                     type: string
                 novelOnly:
                     type: boolean
+                company:
+                    type: string
                 limit:
                     type: integer
                     format: int32
@@ -60268,6 +60278,10 @@ components:
                         $ref: '#/components/schemas/worldmonitor_pharma_v1_DrugApproval'
                 approvalsUnavailable:
                     type: boolean
+                companyCounts:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/worldmonitor_pharma_v1_PipelineFacetCount'
         worldmonitor_pharma_v1_DrugPipelineEntry:
             type: object
             properties:
@@ -60314,6 +60328,11 @@ components:
                     format: int32
                 sourceUrl:
                     type: string
+                parentCompany:
+                    type: string
+                    description: Parent of the sponsor; empty when unmapped.
+                hqCountry:
+                    type: string
             description: |-
                 Field vocabularies and the decision-window heuristic are documented in
                  docs/panels/drug-pipeline.mdx; comments here are kept short because each one
@@ -60348,6 +60367,8 @@ components:
                 modality:
                     type: string
                 route:
+                    type: string
+                parentCompany:
                     type: string
         worldmonitor_positive_events_v1_ListPositiveGeoEventsRequest:
             type: object

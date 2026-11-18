@@ -2297,6 +2297,7 @@
       },
       "allModalities": "Všechny typy léků",
       "allAreas": "Všechny terapeutické oblasti",
+      "allCompanies": "Všechny společnosti",
       "novelOnly": "Pouze nové léky (skrýt rozšíření indikací)",
       "newDrug": "NOVÝ",
       "labelExpansion": "ROZŠÍŘENÍ",
@@ -2320,8 +2321,11 @@
         "other": "Ostatní"
       },
       "area": {
-        "oncology": "Onkologie",
-        "metabolic": "Metabolismus",
+        "oncology_solid": "Solidní nádory",
+        "oncology_hematologic": "Krevní nádory",
+        "obesity": "Obezita",
+        "diabetes": "Cukrovka",
+        "metabolic": "Ostatní metabolické",
         "neurology": "Neurologie",
         "cardiovascular": "Kardiovaskulární",
         "immunology": "Imunologie",
@@ -2329,6 +2333,7 @@
         "respiratory": "Dýchací cesty",
         "psychiatry": "Psychiatrie",
         "hematology": "Hematologie",
+        "ophthalmology": "Oftalmologie",
         "other": "Ostatní"
       },
       "errors": {

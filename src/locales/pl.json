@@ -2297,6 +2297,7 @@
       },
       "allModalities": "Wszystkie typy leków",
       "allAreas": "Wszystkie obszary terapeutyczne",
+      "allCompanies": "Wszystkie firmy",
       "novelOnly": "Tylko nowe leki (ukryj rozszerzenia wskazań)",
       "newDrug": "NOWY",
       "labelExpansion": "ROZSZERZENIE",
@@ -2320,8 +2321,11 @@
         "other": "Inne"
       },
       "area": {
-        "oncology": "Onkologia",
-        "metabolic": "Metabolizm",
+        "oncology_solid": "Guzy lite",
+        "oncology_hematologic": "Nowotwory krwi",
+        "obesity": "Otyłość",
+        "diabetes": "Cukrzyca",
+        "metabolic": "Inne metaboliczne",
         "neurology": "Neurologia",
         "cardiovascular": "Układ krążenia",
         "immunology": "Immunologia",
@@ -2329,6 +2333,7 @@
         "respiratory": "Układ oddechowy",
         "psychiatry": "Psychiatria",
         "hematology": "Hematologia",
+        "ophthalmology": "Okulistyka",
         "other": "Inne"
       },
       "errors": {

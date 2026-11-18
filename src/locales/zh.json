@@ -2267,6 +2267,7 @@
       },
       "allModalities": "全部药物类型",
       "allAreas": "全部治疗领域",
+      "allCompanies": "所有企业",
       "novelOnly": "仅看新药（隐藏适应症扩展）",
       "newDrug": "新药",
       "labelExpansion": "适应症扩展",
@@ -2290,8 +2291,11 @@
         "other": "其他"
       },
       "area": {
-        "oncology": "肿瘤",
-        "metabolic": "代谢",
+        "oncology_solid": "实体瘤",
+        "oncology_hematologic": "血液肿瘤",
+        "obesity": "肥胖",
+        "diabetes": "糖尿病",
+        "metabolic": "其他代谢",
         "neurology": "神经",
         "cardiovascular": "心血管",
         "immunology": "免疫",
@@ -2299,6 +2303,7 @@
         "respiratory": "呼吸",
         "psychiatry": "精神",
         "hematology": "血液",
+        "ophthalmology": "眼科",
         "other": "其他"
       },
       "errors": {

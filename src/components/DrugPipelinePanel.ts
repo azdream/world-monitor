@@ -31,7 +31,9 @@ const MODALITY_COLORS: Record<string, string> = {
 // Acronyms read the same in every locale, so they are not locale strings.
 const ACRONYM_LABELS: Record<string, string> = { adc: 'ADC', rna: 'RNA' };
 
-function label(group: 'modality' | 'area', key: string): string {
+function label(group: 'modality' | 'area' | 'company', key: string): string {
+  // Company names are proper nouns and are shown as registered in the roll-up table.
+  if (group === 'company') return key;
   const acronym = group === 'modality' ? ACRONYM_LABELS[key] : undefined;
   if (acronym) return acronym;
   const path = `components.drugPipeline.${group}.${key}`;
@@ -58,7 +60,7 @@ function badge(text: string, color: string): SafeHtml {
   return safeHtml`<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;letter-spacing:0.03em;white-space:nowrap;color:${color};border:1px solid ${color}">${text}</span>`;
 }
 
-function select(name: string, current: string, allLabel: string, group: 'modality' | 'area', facets: PipelineFacetCount[]): SafeHtml {
+function select(name: string, current: string, allLabel: string, group: 'modality' | 'area' | 'company', facets: PipelineFacetCount[]): SafeHtml {
   const options = facets.map((f) => (f.key === current
     ? safeHtml`<option value="${f.key}" selected>${label(group, f.key)} (${f.count})</option>`
     : safeHtml`<option value="${f.key}">${label(group, f.key)} (${f.count})</option>`));
@@ -80,7 +82,7 @@ function renderEntry(e: DrugPipelineEntry): SafeHtml {
         ${badge(label('modality', e.modality), color)}
         ${e.novel ? badge(t('components.drugPipeline.newDrug'), '#2ecc71') : badge(t('components.drugPipeline.labelExpansion'), '#95a5a6')}
       </div>
-      <div style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.sponsor} · ${e.conditions[0] ?? ''}</div>
+      <div title="${e.sponsor}" style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.parentCompany || e.sponsor}${e.hqCountry ? ` (${e.hqCountry})` : ''} · ${e.conditions[0] ?? ''}</div>
       <div style="display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--text-dim)">
         <span>${t('components.drugPipeline.estimatedWindow', { window })}</span>
         <span style="white-space:nowrap">${completion}</span>
@@ -99,7 +101,7 @@ function renderApproval(a: DrugApproval): SafeHtml {
         ${a.newMolecularEntity ? badge(t('components.drugPipeline.newDrug'), '#2ecc71') : ''}
         ${a.reviewPriority === 'PRIORITY' ? badge(t('components.drugPipeline.priorityReview'), '#e67e22') : ''}
       </div>
-      <div style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.genericName} · ${a.sponsor}</div>
+      <div style="font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.genericName} · ${a.parentCompany || a.sponsor}</div>
       <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim)">
         <span>${a.applicationNumber}</span><span>${a.approvalDate}</span>
       </div>
@@ -110,6 +112,7 @@ export class DrugPipelinePanel extends Panel {
   private view: View = 'pipeline';
   private modality = '';
   private area = '';
+  private company = '';
   private novelOnly = true;
   // One response carries both tabs: filtered trials and (unfiltered) recent approvals.
   private pipeline: ListDrugPipelineResponse | null = null;
@@ -132,6 +135,7 @@ export class DrugPipelinePanel extends Panel {
       if (!filter) return;
       if (filter === 'modality') this.modality = el.value;
       else if (filter === 'area') this.area = el.value;
+      else if (filter === 'company') this.company = el.value;
       else if (filter === 'novel') this.novelOnly = (el as HTMLInputElement).checked;
       void this.fetchData();
     });
@@ -144,6 +148,7 @@ export class DrugPipelinePanel extends Panel {
       const resp = await getPharmaClient().listDrugPipeline({
         modality: this.modality,
         therapeuticArea: this.area,
+        company: this.company,
         novelOnly: this.novelOnly,
         limit: PIPELINE_LIMIT,
       });
@@ -177,6 +182,9 @@ export class DrugPipelinePanel extends Panel {
       <div style="display:flex;gap:6px;padding:0 0 6px">
         ${select('modality', this.modality, t('components.drugPipeline.allModalities'), 'modality', data.modalityCounts)}
         ${select('area', this.area, t('components.drugPipeline.allAreas'), 'area', data.areaCounts)}
+      </div>
+      <div style="display:flex;padding:0 0 6px">
+        ${select('company', this.company, t('components.drugPipeline.allCompanies'), 'company', data.companyCounts)}
       </div>
       <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-dim);padding:0 0 6px;cursor:pointer">
         ${this.novelOnly

@@ -2575,6 +2575,7 @@
       },
       "allModalities": "Sve vrste lijekova",
       "allAreas": "Sva terapijska područja",
+      "allCompanies": "Sve tvrtke",
       "novelOnly": "Samo novi lijekovi (sakrij proširenja indikacija)",
       "newDrug": "NOVO",
       "labelExpansion": "PROŠIRENJE",
@@ -2598,8 +2599,11 @@
         "other": "Ostalo"
       },
       "area": {
-        "oncology": "Onkologija",
-        "metabolic": "Metabolizam",
+        "oncology_solid": "Solidni tumori",
+        "oncology_hematologic": "Rak krvi",
+        "obesity": "Pretilost",
+        "diabetes": "Dijabetes",
+        "metabolic": "Ostale metaboličke",
         "neurology": "Neurologija",
         "cardiovascular": "Kardiovaskularno",
         "immunology": "Imunologija",
@@ -2607,6 +2611,7 @@
         "respiratory": "Dišni sustav",
         "psychiatry": "Psihijatrija",
         "hematology": "Hematologija",
+        "ophthalmology": "Oftalmologija",
         "other": "Ostalo"
       },
       "errors": {

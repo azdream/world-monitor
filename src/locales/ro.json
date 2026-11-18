@@ -2287,6 +2287,7 @@
       },
       "allModalities": "Toate tipurile de medicamente",
       "allAreas": "Toate ariile terapeutice",
+      "allCompanies": "Toate companiile",
       "novelOnly": "Doar medicamente noi (ascunde extinderile de indicație)",
       "newDrug": "NOU",
       "labelExpansion": "EXTINDERE",
@@ -2310,8 +2311,11 @@
         "other": "Altele"
       },
       "area": {
-        "oncology": "Oncologie",
-        "metabolic": "Metabolic",
+        "oncology_solid": "Tumori solide",
+        "oncology_hematologic": "Cancere de sânge",
+        "obesity": "Obezitate",
+        "diabetes": "Diabet",
+        "metabolic": "Alte metabolice",
         "neurology": "Neurologie",
         "cardiovascular": "Cardiovascular",
         "immunology": "Imunologie",
@@ -2319,6 +2323,7 @@
         "respiratory": "Respirator",
         "psychiatry": "Psihiatrie",
         "hematology": "Hematologie",
+        "ophthalmology": "Oftalmologie",
         "other": "Altele"
       },
       "errors": {

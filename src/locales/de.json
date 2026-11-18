@@ -2277,6 +2277,7 @@
       },
       "allModalities": "Alle Wirkstofftypen",
       "allAreas": "Alle Therapiegebiete",
+      "allCompanies": "Alle Unternehmen",
       "novelOnly": "Nur neue Wirkstoffe (Indikationserweiterungen ausblenden)",
       "newDrug": "NEU",
       "labelExpansion": "ERWEITERUNG",
@@ -2300,8 +2301,11 @@
         "other": "Sonstige"
       },
       "area": {
-        "oncology": "Onkologie",
-        "metabolic": "Stoffwechsel",
+        "oncology_solid": "Solide Tumoren",
+        "oncology_hematologic": "Blutkrebs",
+        "obesity": "Adipositas",
+        "diabetes": "Diabetes",
+        "metabolic": "Sonstige Stoffwechsel",
         "neurology": "Neurologie",
         "cardiovascular": "Herz-Kreislauf",
         "immunology": "Immunologie",
@@ -2309,6 +2313,7 @@
         "respiratory": "Atemwege",
         "psychiatry": "Psychiatrie",
         "hematology": "Hämatologie",
+        "ophthalmology": "Augenheilkunde",
         "other": "Sonstige"
       },
       "errors": {

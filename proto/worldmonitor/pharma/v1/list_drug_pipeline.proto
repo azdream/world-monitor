@@ -28,6 +28,9 @@ message DrugPipelineEntry {
   bool novel = 16;
   int32 enrollment = 17;
   string source_url = 18;
+  // Parent of the sponsor; empty when unmapped.
+  string parent_company = 19;
+  string hq_country = 20;
 }
 
 message DrugApproval {
@@ -41,6 +44,7 @@ message DrugApproval {
   bool new_molecular_entity = 8;
   string modality = 9;
   string route = 10;
+  string parent_company = 11;
 }
 
 message PipelineFacetCount {
@@ -52,6 +56,7 @@ message ListDrugPipelineRequest {
   string modality = 1 [(sebuf.http.query) = {name: "modality"}];
   string therapeutic_area = 2 [(sebuf.http.query) = {name: "therapeutic_area"}];
   bool novel_only = 3 [(sebuf.http.query) = {name: "novel_only"}];
+  string company = 5 [(sebuf.http.query) = {name: "company"}];
   // Default 200, max 500.
   int32 limit = 4 [(sebuf.http.query) = {name: "limit"}];
 }
@@ -68,4 +73,5 @@ message ListDrugPipelineResponse {
   // CDER approvals, last 180 days; not filtered.
   repeated DrugApproval approvals = 7;
   bool approvals_unavailable = 8;
+  repeated PipelineFacetCount company_counts = 9;
 }

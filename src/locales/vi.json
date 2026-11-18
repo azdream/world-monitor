@@ -2267,6 +2267,7 @@
       },
       "allModalities": "Tất cả loại thuốc",
       "allAreas": "Tất cả lĩnh vực điều trị",
+      "allCompanies": "Tất cả công ty",
       "novelOnly": "Chỉ thuốc mới (ẩn mở rộng chỉ định)",
       "newDrug": "MỚI",
       "labelExpansion": "MỞ RỘNG",
@@ -2290,8 +2291,11 @@
         "other": "Khác"
       },
       "area": {
-        "oncology": "Ung thư",
-        "metabolic": "Chuyển hóa",
+        "oncology_solid": "U đặc",
+        "oncology_hematologic": "Ung thư máu",
+        "obesity": "Béo phì",
+        "diabetes": "Đái tháo đường",
+        "metabolic": "Chuyển hóa khác",
         "neurology": "Thần kinh",
         "cardiovascular": "Tim mạch",
         "immunology": "Miễn dịch",
@@ -2299,6 +2303,7 @@
         "respiratory": "Hô hấp",
         "psychiatry": "Tâm thần",
         "hematology": "Huyết học",
+        "ophthalmology": "Nhãn khoa",
         "other": "Khác"
       },
       "errors": {

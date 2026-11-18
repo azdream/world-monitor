@@ -14,7 +14,11 @@ The **Drug Pipeline** panel answers one question: which new drugs could reach a 
 - **NEW / EXPANSION badge** — `NEW` when the candidate is not yet an approved drug; `EXPANSION` when the trial tests an already-approved drug in a new use.
 - **Estimated decision window** and the trial's primary completion date.
 
-Rows are grouped by the earliest quarter of the estimated window. Two dropdowns filter by drug type and therapeutic area (each option shows its count), and a checkbox hides label expansions. Each row links to the trial on ClinicalTrials.gov.
+Rows are grouped by the earliest quarter of the estimated window. Dropdowns filter by drug type, therapeutic area, and parent company (each option shows its count), and a checkbox hides label expansions. Each row links to the trial on ClinicalTrials.gov.
+
+**Therapeutic areas.** Oncology is split into solid tumors and blood cancers. Obesity and diabetes are separate from the remaining metabolic conditions; when a trial names both, the first-listed condition decides. Eye disease is its own area even when diabetes is the cause. The rest are neurology, cardiovascular, immunology, infectious disease, respiratory, psychiatry, hematology, and other.
+
+**Parent companies.** Registries name the legal entity that filed, often a subsidiary. A hand-curated table (`scripts/_pharma-companies.mjs`) rolls those up to a parent and its headquarters country, shown in the row as `Parent (CC)`; hovering shows the registered sponsor. Sponsors without an entry keep their registered name and never appear in the company dropdown. The table covers the largest sponsors only, so a company's count in the dropdown is the count of its mapped trials, not a census.
 
 **Recent approvals tab** — original NDA and BLA approvals from the last 180 days, with drug type, a `NEW` badge for new molecular entities, and a `PRIORITY` badge for priority review.
 
@@ -38,7 +42,7 @@ Regulators do not publish decision goal dates, and sponsors disclose them only i
 
 A single RPC backs both tabs:
 
-- `GET /api/pharma/v1/list-drug-pipeline` — accepts `modality`, `therapeutic_area`, `novel_only`, and `limit` (default 200, max 500). The response also carries the recent approvals, which the trial filters do not affect.
+- `GET /api/pharma/v1/list-drug-pipeline` — accepts `modality`, `therapeutic_area`, `company`, `novel_only`, and `limit` (default 200, max 500). The response also carries the recent approvals, which the trial filters do not affect.
 
 The seeder (`scripts/seed-drug-pipeline.mjs`) combines the public sources below, none of which requires registration:
 
@@ -52,6 +56,7 @@ Results are written to `pharma:drug-pipeline:v1` in Redis with a 72-hour TTL. Th
 
 - **CBER products are missing from approvals.** Drugs@FDA covers CDER only, so vaccines and cell or gene therapies do not appear in the approvals tab. They do appear in the pipeline tab.
 - **Drug type is partly inferred.** Candidates with only a company code name and no ChEMBL entry are typed from the registry's `DRUG` / `BIOLOGICAL` / `GENETIC` label, which cannot tell an antibody from another biologic.
+- **Headquarters is the parent's, not the trial's.** It says nothing about where a trial runs or where a drug is made.
 - **US decision timing only.** The review-clock assumptions are FDA's; other regulators differ.
 
 ## Refresh cadence
