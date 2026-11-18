@@ -29178,18 +29178,21 @@ paths:
             parameters:
                 - name: modality
                   in: query
+                  description: Drug type filter.
                   required: false
                   example: "example"
                   schema:
                     type: string
                 - name: therapeutic_area
                   in: query
+                  description: Therapeutic area filter.
                   required: false
                   example: "example"
                   schema:
                     type: string
                 - name: novel_only
                   in: query
+                  description: Only unapproved candidates.
                   required: false
                   example: true
                   schema:
@@ -60230,10 +60233,13 @@ components:
             properties:
                 modality:
                     type: string
+                    description: Drug type filter.
                 therapeuticArea:
                     type: string
+                    description: Therapeutic area filter.
                 novelOnly:
                     type: boolean
+                    description: Only unapproved candidates.
                 limit:
                     type: integer
                     format: int32
@@ -60317,7 +60323,9 @@ components:
             description: |-
                 Field vocabularies and the decision-window heuristic are documented in
                  docs/panels/drug-pipeline.mdx; comments here are kept short because each one
-                 is emitted into the size-budgeted public OpenAPI bundle.
+                 is emitted into the size-budgeted public OpenAPI bundle. Query parameters
+                 are the exception: tests/generated-api-description-guard.test.mjs requires
+                 each one to carry a description.
         worldmonitor_pharma_v1_PipelineFacetCount:
             type: object
             properties:

@@ -6,7 +6,9 @@ import "sebuf/http/annotations.proto";
 
 // Field vocabularies and the decision-window heuristic are documented in
 // docs/panels/drug-pipeline.mdx; comments here are kept short because each one
-// is emitted into the size-budgeted public OpenAPI bundle.
+// is emitted into the size-budgeted public OpenAPI bundle. Query parameters
+// are the exception: tests/generated-api-description-guard.test.mjs requires
+// each one to carry a description.
 message DrugPipelineEntry {
   string nct_id = 1;
   string title = 2;
@@ -49,8 +51,11 @@ message PipelineFacetCount {
 }
 
 message ListDrugPipelineRequest {
+  // Drug type filter.
   string modality = 1 [(sebuf.http.query) = {name: "modality"}];
+  // Therapeutic area filter.
   string therapeutic_area = 2 [(sebuf.http.query) = {name: "therapeutic_area"}];
+  // Only unapproved candidates.
   bool novel_only = 3 [(sebuf.http.query) = {name: "novel_only"}];
   // Default 200, max 500.
   int32 limit = 4 [(sebuf.http.query) = {name: "limit"}];
