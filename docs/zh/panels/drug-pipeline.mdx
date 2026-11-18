@@ -57,4 +57,4 @@ description: "按预计监管决定窗口分组、可按药物类型筛选的后
 
 ## 刷新频率
 
-种子器在 health 种子包中**每日**运行。`api/health.js` 允许该键最长 48 小时（`maxStaleMin: 2880`），之后健康面才会升级告警。
+种子器在 health 种子包中**每日**运行，每次发布都会写入 `seed-meta:pharma:drug-pipeline`。该键尚未注册为 `/api/health` 探针：待种子器的首次生产运行得到确认后再注册。

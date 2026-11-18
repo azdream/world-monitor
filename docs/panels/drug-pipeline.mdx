@@ -57,4 +57,4 @@ Results are written to `pharma:drug-pipeline:v1` in Redis with a 72-hour TTL. Th
 
 ## Refresh cadence
 
-The seeder runs **daily** in the health seed bundle. The key is allowed up to 48 hours in `api/health.js` (`maxStaleMin: 2880`) before the health surface escalates.
+The seeder runs **daily** in the health seed bundle and writes `seed-meta:pharma:drug-pipeline` on every publish. The key is not yet registered as an `/api/health` probe: that registration follows once the seeder's first production run is confirmed.

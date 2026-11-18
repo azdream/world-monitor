@@ -299,7 +299,6 @@ const BOOTSTRAP_KEYS = {
 };
 
 const STANDALONE_KEYS = {
-  drugPipeline:      'pharma:drug-pipeline:v1', // seed-drug-pipeline.mjs — daily in the health bundle; read by pharma/v1 RPCs only
   chinaCoverage:      CHINA_COVERAGE_SUMMARY_KEY,
   // Control-plane heartbeat only. Convex owns every durable scan lease,
   // checkpoint, receipt, and replay decision; this Redis value is disposable.
@@ -871,7 +870,6 @@ const SEED_META = {
     },
   }, // 15min bundle member; three missed runs should alert before the 14d chart ages materially.
   hormuzTracker:     { key: 'seed-meta:supply_chain:hormuz_tracker',  maxStaleMin: 2880 }, // daily cron; 2880min = 48h = 2x interval
-  drugPipeline:      { key: 'seed-meta:pharma:drug-pipeline',         maxStaleMin: 2880 }, // daily seed; 2880 = 48h = 2x interval
   earningsCalendar:  { key: 'seed-meta:market:earnings-calendar',     maxStaleMin: 1440 }, // 12h cron; 1440min = 24h = 2x interval
   econCalendar:      { key: 'seed-meta:economic:econ-calendar',       maxStaleMin: 1440 }, // 12h cron; 1440min = 24h = 2x interval
   cotPositioning:    { key: 'seed-meta:market:cot',                   maxStaleMin: 14400 }, // weekly CFTC release; 14400min = 10d = 1.4x interval (weekend + delay buffer)
