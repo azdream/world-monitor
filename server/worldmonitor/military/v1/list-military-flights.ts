@@ -10,7 +10,14 @@ import type {
 import { isMilitaryCallsign, isMilitaryHex, detectAircraftType, UPSTREAM_TIMEOUT_MS } from './_shared';
 import { hasFiniteRequestBounds, normalizeBounds, type RequestBounds } from './_bounds';
 import { MILITARY_FLIGHTS_SEED_KEY, MILITARY_FLIGHTS_STALE_KEY } from './_tracked-aircraft';
-import { cachedFetchJson, getRawJson, readCachedJson, setCachedJson, setCachedJsonIfAbsent } from '../../../_shared/redis';
+import {
+  cachedFetchJson,
+  getRawJson,
+  readCachedJson,
+  runRedisPipeline,
+  setCachedJson,
+  setCachedJsonIfAbsent,
+} from '../../../_shared/redis';
 import { markNoCacheResponse } from '../../../_shared/response-headers';
 import { SeedUnavailableError } from '../../../_shared/required-seed';
 import { getRelayBaseUrl, getRelayHeaders } from '../../../_shared/relay';
@@ -24,7 +31,14 @@ import { captureSilentError } from '../../../../api/_sentry-edge.js';
 const REDIS_CACHE_KEY = MILITARY_FLIGHTS_SEED_KEY;
 const REDIS_CACHE_TTL = 600; // 10 min — reduce upstream API pressure
 const REDIS_STALE_KEY = MILITARY_FLIGHTS_STALE_KEY;
-const STABLE_LIVE_SNAPSHOT_CACHE_KEY = 'military:flights:stable-live:v1';
+// One copy per live seed snapshot, keyed by its id, so a continuation cursor
+// keeps paging the snapshot its first page read after the seeder replaces the
+// root key. See resolveLiveSnapshot.
+const LIVE_SNAPSHOT_COPY_KEY_PREFIX = 'military:flights:stable-live:v2:';
+const LIVE_SNAPSHOT_COPY_TTL = 600;
+// A first page only advertises a cursor once its copy is known to live at
+// least this long, so even a slow client has five minutes to finish paging.
+const LIVE_SNAPSHOT_MIN_TRAVERSAL_SECONDS = 300;
 const STABLE_STALE_CACHE_KEY = 'military:flights:stable-stale:v1';
 const STALE_SNAPSHOT_CACHE_TTL = 120; // Bind a bounded cursor traversal to one snapshot.
 const STALE_SNAPSHOT_NEG_TTL = 30;
@@ -80,12 +94,34 @@ function filterFlightsToBounds(
 
 // Pagination is bounded on every request: page_size documents a 1-100 range,
 // and 0 / omitted / malformed / out-of-range inputs fall back to the default
-// so the public endpoint never streams an unbounded response. The cursor is an
-// opaque decimal offset into the exact-bbox-filtered result; empty or malformed
-// cursors start at the first page. Internal callers that need the full dataset
-// follow next_cursor (see src/services/military-flights.ts:fetchViaProto).
+// so the public endpoint never streams an unbounded response. The cursor is
+// opaque to clients. Pages of the live seed carry `<snapshotId>:<offset>`, so a
+// continuation reads the snapshot its first page read; stale and provider
+// recovery pages carry a bare decimal offset. Empty or malformed cursors start
+// at the first page. Internal callers that need the full dataset follow
+// next_cursor (see src/services/military-flights.ts:fetchViaProto).
 const DEFAULT_PAGE_SIZE = 100;
 const MAX_PAGE_SIZE = 100;
+
+// A snapshot id is the seed's fetchedAt in milliseconds, or an `f` fingerprint
+// for a payload that predates the stamp (see liveSnapshotId).
+const SNAPSHOT_ID = String.raw`[1-9]\d{0,15}|f[0-9a-f]{8}`;
+const SNAPSHOT_BOUND_CURSOR = new RegExp(String.raw`^(${SNAPSHOT_ID}):(\d{1,16})$`);
+const OFFSET_CURSOR = /^\d+$/;
+// What this handler emits: an optional snapshot id and a positive offset.
+const CONTINUATION_CURSOR = new RegExp(String.raw`^(?:(?:${SNAPSHOT_ID}):)?[1-9]\d{0,5}$`);
+
+interface PageCursor {
+  snapshotId: string | null;
+  offset: number;
+}
+
+interface PagePosition {
+  pageSize: number | undefined;
+  offset: number;
+  /** Binds the next cursor to this live snapshot; null emits a bare offset. */
+  snapshotId: string | null;
+}
 
 function resolvePageSize(pageSize: number | undefined): number {
   if (typeof pageSize !== 'number' || !Number.isInteger(pageSize) || pageSize <= 0) {
@@ -94,10 +130,21 @@ function resolvePageSize(pageSize: number | undefined): number {
   return Math.min(pageSize, MAX_PAGE_SIZE);
 }
 
-function resolveOffset(cursor: string | undefined): number {
-  if (typeof cursor !== 'string' || !/^\d+$/.test(cursor)) return 0;
-  const offset = Number(cursor);
-  return Number.isSafeInteger(offset) && offset >= 0 ? offset : 0;
+function parsePageCursor(cursor: string | undefined): PageCursor {
+  if (typeof cursor !== 'string') return { snapshotId: null, offset: 0 };
+  const bound = SNAPSHOT_BOUND_CURSOR.exec(cursor);
+  const offsetText = bound ? bound[2]! : OFFSET_CURSOR.test(cursor) ? cursor : null;
+  const offset = offsetText === null ? NaN : Number(offsetText);
+  if (!Number.isSafeInteger(offset) || offset < 0) return { snapshotId: null, offset: 0 };
+  return { snapshotId: bound ? bound[1]! : null, offset };
+}
+
+/**
+ * Whether a continuation cursor this handler emitted is well formed, for
+ * wrappers that validate it before any Redis read. Offset 0 is never emitted.
+ */
+export function isMilitaryFlightContinuationCursor(cursor: string): boolean {
+  return CONTINUATION_CURSOR.test(cursor);
 }
 
 function emptyResponse(): ListMilitaryFlightsResponse {
@@ -123,14 +170,16 @@ function paginateResponse(
   flights: ListMilitaryFlightsResponse['flights'],
   clusters: ListMilitaryFlightsResponse['clusters'],
   bounds: RequestBounds,
-  req: ListMilitaryFlightsRequest,
+  position: PagePosition,
 ): ListMilitaryFlightsResponse {
   const filtered = filterFlightsToBounds(flights, bounds);
-  const pageSize = resolvePageSize(req.pageSize);
-  const offset = resolveOffset(req.cursor);
+  const pageSize = resolvePageSize(position.pageSize);
+  const { offset, snapshotId } = position;
   const page = filtered.slice(offset, offset + pageSize);
   const nextOffset = offset + page.length;
-  const nextCursor = nextOffset < filtered.length ? String(nextOffset) : '';
+  const nextCursor = nextOffset >= filtered.length
+    ? ''
+    : snapshotId === null ? String(nextOffset) : `${snapshotId}:${nextOffset}`;
   return {
     flights: page,
     clusters: clusters ?? [],
@@ -143,10 +192,10 @@ function paginateResponseForCaller(
   flights: ListMilitaryFlightsResponse['flights'],
   clusters: ListMilitaryFlightsResponse['clusters'],
   bounds: RequestBounds,
-  req: ListMilitaryFlightsRequest,
+  position: PagePosition,
 ): ListMilitaryFlightsResponse {
   if (!redistributableOnly) {
-    return paginateResponse(flights, clusters, bounds, req);
+    return paginateResponse(flights, clusters, bounds, position);
   }
 
   const redistributableFlights = flights.filter((flight) =>
@@ -158,7 +207,7 @@ function paginateResponseForCaller(
       return { ...cluster, flights: clusterFlights, flightCount: clusterFlights.length };
     })
     .filter((cluster) => cluster.flightCount > 0);
-  return paginateResponse(redistributableFlights, redistributableClusters, bounds, req);
+  return paginateResponse(redistributableFlights, redistributableClusters, bounds, position);
 }
 
 const AIRCRAFT_TYPE_MAP: Record<string, string> = {
@@ -274,14 +323,45 @@ function seedPayloadToProto(raw: SeedPayload | null): ListMilitaryFlightsRespons
   return flights.length > 0 ? flights : null;
 }
 
+/** One published live seed, converted to proto rows, with the id cursors bind to. */
+interface LiveSnapshot {
+  snapshotId: string;
+  flights: ListMilitaryFlightsResponse['flights'];
+  coverage: SeedCoverage;
+}
+
+/**
+ * The seeder stamps every publish with its own fetchedAt, so that is the
+ * snapshot id. A payload without the stamp gets a fingerprint of its rows and
+ * positions instead: a reused id must never stand for different rows.
+ */
+function liveSnapshotId(
+  payload: SeedPayload,
+  flights: ListMilitaryFlightsResponse['flights'],
+): string {
+  const { fetchedAt } = payload;
+  if (typeof fetchedAt === 'number' && Number.isSafeInteger(fetchedAt) && fetchedAt > 0) {
+    return String(fetchedAt);
+  }
+  let hash = 0x811c9dc5;
+  for (const flight of flights) {
+    const row = `${flight.id}|${flight.location?.latitude}|${flight.location?.longitude};`;
+    for (let index = 0; index < row.length; index += 1) {
+      hash = Math.imul(hash ^ row.charCodeAt(index), 0x01000193);
+    }
+  }
+  return `f${(hash >>> 0).toString(16).padStart(8, '0')}`;
+}
+
 const LIVE_SEED_NEG_TTL_MS = 30_000;
 let liveSeedNegUntil = 0;
 let liveSeedNegStatus: 'miss' | 'error' = 'miss';
 type LiveSeedRead =
-  | { status: 'hit'; flights: ListMilitaryFlightsResponse['flights']; coverage: SeedCoverage }
+  | { status: 'hit'; snapshot: LiveSnapshot }
   | { status: 'miss' | 'error' };
 let liveSeedReadPromise: Promise<LiveSeedRead> | null = null;
-let stableLiveSeedSnapshotInflight: Promise<LiveSeedRead> | null = null;
+const liveSnapshotCopyConfirmedUntil = new Map<string, number>();
+const liveSnapshotCopyInflight = new Map<string, Promise<boolean>>();
 
 async function fetchLiveSeedSnapshot(): Promise<LiveSeedRead> {
   const now = Date.now();
@@ -305,7 +385,10 @@ async function fetchLiveSeedSnapshot(): Promise<LiveSeedRead> {
     // An absent field predates the producer stamping coverage; regional is the
     // conservative reading, and it is what the payload actually covered then.
     const coverage: SeedCoverage = payload?.coverage === 'global' ? 'global' : 'regional';
-    return { status: 'hit', flights, coverage };
+    return {
+      status: 'hit',
+      snapshot: { snapshotId: liveSnapshotId(payload ?? {}, flights), flights, coverage },
+    };
   })();
   try {
     return await liveSeedReadPromise;
@@ -314,63 +397,111 @@ async function fetchLiveSeedSnapshot(): Promise<LiveSeedRead> {
   }
 }
 
-interface StableLiveSeedSnapshot {
-  flights: ListMilitaryFlightsResponse['flights'];
-  coverage: SeedCoverage;
+function liveSnapshotCopyKey(snapshotId: string): string {
+  return `${LIVE_SNAPSHOT_COPY_KEY_PREFIX}${snapshotId}`;
 }
 
-function parseStableLiveSeedSnapshot(value: unknown): StableLiveSeedSnapshot | null {
+function parseLiveSnapshotCopy(value: unknown, snapshotId: string): LiveSnapshot | null {
   if (!value || typeof value !== 'object') return null;
-  const snapshot = value as Partial<StableLiveSeedSnapshot>;
+  const copy = value as Partial<LiveSnapshot>;
   if (
-    !Array.isArray(snapshot.flights)
-    || (snapshot.coverage !== 'global' && snapshot.coverage !== 'regional')
+    copy.snapshotId !== snapshotId
+    || !Array.isArray(copy.flights)
+    || (copy.coverage !== 'global' && copy.coverage !== 'regional')
   ) return null;
-  return { flights: snapshot.flights, coverage: snapshot.coverage };
+  return { snapshotId, flights: copy.flights, coverage: copy.coverage };
 }
 
-// Cursors are numeric offsets, so every covered live-seed request must page
-// against one shared snapshot rather than isolate-local state. This fixed key
-// replaces the former one-copy-per-bbox cache while retaining its 10-minute
-// traversal window. It never receives provider recovery data.
-async function fetchStableLiveSeedSnapshot(): Promise<LiveSeedRead> {
-  const cached = await readCachedJson(STABLE_LIVE_SNAPSHOT_CACHE_KEY);
-  if (cached.status === 'hit') {
-    const snapshot = parseStableLiveSeedSnapshot(cached.value);
-    if (snapshot) return { status: 'hit', ...snapshot };
-  }
+type LiveSnapshotRead =
+  | { status: 'hit'; snapshot: LiveSnapshot; fromCopy: boolean }
+  | { status: 'miss' | 'error' };
 
-  if (stableLiveSeedSnapshotInflight) return stableLiveSeedSnapshotInflight;
-  const promise = (async (): Promise<LiveSeedRead> => {
-    const seeded = await fetchLiveSeedSnapshot();
-    if (seeded.status !== 'hit') return seeded;
-    // First writer publishes the cursor source; losers must adopt that
-    // persisted snapshot. Returning the local read after an unconfirmed
-    // write lets the next numeric page slice a different isolate's snapshot.
-    await setCachedJsonIfAbsent(
-      STABLE_LIVE_SNAPSHOT_CACHE_KEY,
-      { flights: seeded.flights, coverage: seeded.coverage },
-      REDIS_CACHE_TTL,
-      false,
-      (error) => {
+// The seeder replaces the live root every five minutes, so a numeric offset
+// into the root would slice a different snapshot once a newer one lands. A
+// first page therefore reads the root, the newest snapshot, and binds its
+// cursor to that snapshot's id; a continuation reads the copy kept for that
+// id. Each request makes one full-payload read, or two for a continuation
+// whose copy is gone.
+//
+// A copy that is gone means the client paged past the retention window. That
+// continuation falls back to the newest snapshot at the same offset, as every
+// cursor did before snapshots had ids, rather than failing: the slow CDN tier
+// can hand out first pages older than any copy kept here.
+async function resolveLiveSnapshot(cursor: PageCursor): Promise<LiveSnapshotRead> {
+  if (cursor.snapshotId !== null) {
+    const copy = await readCachedJson(liveSnapshotCopyKey(cursor.snapshotId));
+    const snapshot = copy.status === 'hit' ? parseLiveSnapshotCopy(copy.value, cursor.snapshotId) : null;
+    if (snapshot) return { status: 'hit', snapshot, fromCopy: true };
+  }
+  const live = await fetchLiveSeedSnapshot();
+  return live.status === 'hit' ? { status: 'hit', snapshot: live.snapshot, fromCopy: false } : live;
+}
+
+type CopyRenewal = 'renewed' | 'missing' | 'unknown';
+
+// EXPIRE confirms that a copy exists and renews it without re-sending the
+// payload. 'unknown' covers a failed pipeline and the desktop sidecar cache,
+// which has no EXPIRE.
+async function renewLiveSnapshotCopy(key: string): Promise<CopyRenewal> {
+  const [reply] = await runRedisPipeline([['EXPIRE', key, LIVE_SNAPSHOT_COPY_TTL]]);
+  if (reply?.result === 1) return 'renewed';
+  if (reply?.result === 0) return 'missing';
+  return 'unknown';
+}
+
+function rememberLiveSnapshotCopy(snapshotId: string, confirmedUntil: number): void {
+  const now = Date.now();
+  for (const [id, until] of liveSnapshotCopyConfirmedUntil) {
+    if (until <= now) liveSnapshotCopyConfirmedUntil.delete(id);
+  }
+  liveSnapshotCopyConfirmedUntil.set(snapshotId, confirmedUntil);
+}
+
+/**
+ * Make sure the copy a continuation cursor will read exists. Returns false
+ * when it cannot be confirmed, in which case no cursor may be emitted.
+ *
+ * Every confirmation sets the copy's TTL to LIVE_SNAPSHOT_COPY_TTL, so this
+ * isolate can skip Redis until LIVE_SNAPSHOT_MIN_TRAVERSAL_SECONDS before the
+ * earliest moment that copy could expire.
+ */
+async function ensureLiveSnapshotCopy(snapshot: LiveSnapshot): Promise<boolean> {
+  const { snapshotId } = snapshot;
+  if ((liveSnapshotCopyConfirmedUntil.get(snapshotId) ?? 0) > Date.now()) return true;
+  const inflight = liveSnapshotCopyInflight.get(snapshotId);
+  if (inflight) return inflight;
+
+  const promise = (async (): Promise<boolean> => {
+    const startedAt = Date.now();
+    const key = liveSnapshotCopyKey(snapshotId);
+    let renewal = await renewLiveSnapshotCopy(key);
+    if (renewal !== 'renewed') {
+      // Every isolate derives the same rows from the same seed, so whichever
+      // writer wins the NX race publishes an identical copy.
+      const created = await setCachedJsonIfAbsent(key, snapshot, LIVE_SNAPSHOT_COPY_TTL, false, (error) => {
         void captureSilentError(error, {
-          tags: {
-            route: 'military/list-military-flights',
-            step: 'stable-live-snapshot-publish',
-          },
+          tags: { route: 'military/list-military-flights', step: 'live-snapshot-copy-publish' },
         });
-      },
-    );
-    const persisted = await readCachedJson(STABLE_LIVE_SNAPSHOT_CACHE_KEY);
-    if (persisted.status === 'hit') {
-      const snapshot = parseStableLiveSeedSnapshot(persisted.value);
-      if (snapshot) return { status: 'hit', ...snapshot };
+      });
+      // false is ambiguous: another isolate won the race, or the write failed.
+      renewal = created ? 'renewed' : await renewLiveSnapshotCopy(key);
     }
-    return { status: 'error' };
+    if (renewal === 'renewed') {
+      rememberLiveSnapshotCopy(
+        snapshotId,
+        startedAt + (LIVE_SNAPSHOT_COPY_TTL - LIVE_SNAPSHOT_MIN_TRAVERSAL_SECONDS) * 1_000,
+      );
+      return true;
+    }
+    if (renewal === 'missing') return false;
+    // EXPIRE could not answer. A copy read back proves it exists, but its TTL
+    // is unknown, so confirm this request only.
+    const persisted = await readCachedJson(key);
+    return persisted.status === 'hit' && parseLiveSnapshotCopy(persisted.value, snapshotId) !== null;
   })().finally(() => {
-    stableLiveSeedSnapshotInflight = null;
+    liveSnapshotCopyInflight.delete(snapshotId);
   });
-  stableLiveSeedSnapshotInflight = promise;
+  liveSnapshotCopyInflight.set(snapshotId, promise);
   return promise;
 }
 
@@ -396,7 +527,8 @@ export function _resetStaleNegativeCacheForTests(): void {
   liveSeedNegUntil = 0;
   liveSeedNegStatus = 'miss';
   liveSeedReadPromise = null;
-  stableLiveSeedSnapshotInflight = null;
+  liveSnapshotCopyConfirmedUntil.clear();
+  liveSnapshotCopyInflight.clear();
   staleNegUntil = 0;
   staleSnapshotLocalCache = null;
   staleSnapshotInflight = null;
@@ -534,27 +666,41 @@ export async function readMilitaryFlights(
     // bbox; answer empty instead of letting it reach the relay as garbage.
     if (!hasFiniteRequestBounds(req)) return emptyResponse();
     const requestBounds = normalizeBounds(req);
+    const cursor = parsePageCursor(req.cursor);
+    // Stale and provider recovery pages carry bare offsets.
+    const offsetPage: PagePosition = { pageSize: req.pageSize, offset: cursor.offset, snapshotId: null };
 
     // The live seed is the source of truth for an authoritatively covered
     // snapshot. Its value is independent of this request's bbox, so returning
     // it through the bbox-keyed provider cache would duplicate the same full
-    // snapshot under every viewport key. Use one shared stable snapshot before
-    // judging payload-declared coverage so numeric cursors survive another
+    // snapshot under every viewport key. Resolve the snapshot this page belongs
+    // to before judging payload-declared coverage, so a cursor survives another
     // edge isolate without making provider recovery globally cacheable.
-    const seeded = await fetchStableLiveSeedSnapshot();
+    const seeded = await resolveLiveSnapshot(cursor);
     if (seeded.status === 'error') {
       // A Redis command/read failure is not proof the snapshot is missing.
       // Throw before any provider call so the catch can consult stale data
       // without turning a Redis outage into per-bbox OpenSky fanout.
       throw new Error('military live seed read failed');
     }
-    if (seeded.status === 'hit' && seedCovers(seeded.coverage, requestBounds)) {
-      return paginateResponseForCaller(redistributableOnly, seeded.flights, [], requestBounds, req);
+    if (seeded.status === 'hit' && seedCovers(seeded.snapshot.coverage, requestBounds)) {
+      const { snapshot } = seeded;
+      const page = paginateResponseForCaller(redistributableOnly, snapshot.flights, [], requestBounds, {
+        pageSize: req.pageSize,
+        offset: cursor.offset,
+        snapshotId: snapshot.snapshotId,
+      });
+      // The next page will read the copy, not the root. Without a confirmed
+      // copy, fail closed before emitting a cursor nothing can continue.
+      if (page.pagination?.nextCursor && !seeded.fromCopy && !(await ensureLiveSnapshotCopy(snapshot))) {
+        throw new Error('military live snapshot copy unconfirmed');
+      }
+      return page;
     }
 
     if (!policy.allowProviderFetch) {
       const stale = await fetchStableStaleSnapshot(requestBounds);
-      if (stale) return paginateResponseForCaller(redistributableOnly, stale.flights, stale.clusters, requestBounds, req);
+      if (stale) return paginateResponseForCaller(redistributableOnly, stale.flights, stale.clusters, requestBounds, offsetPage);
       throw new Error('Country flight snapshot unavailable');
     }
 
@@ -662,12 +808,12 @@ export async function readMilitaryFlights(
       // fallback when OpenSky / the relay hiccups.
       const staleResult = await fetchStableStaleSnapshot(requestBounds);
       if (staleResult) {
-        return paginateResponseForCaller(redistributableOnly, staleResult.flights, staleResult.clusters, requestBounds, req);
+        return paginateResponseForCaller(redistributableOnly, staleResult.flights, staleResult.clusters, requestBounds, offsetPage);
       }
       markNoCacheResponse(ctx.request);
       return emptyResponse();
     }
-    return paginateResponseForCaller(redistributableOnly, fullResult.flights, fullResult.clusters, requestBounds, req);
+    return paginateResponseForCaller(redistributableOnly, fullResult.flights, fullResult.clusters, requestBounds, offsetPage);
   } catch {
     // Reaching here means the live path was abandoned before any provider call —
     // most often the deliberate 'live seed read failed' throw above, which exists
@@ -684,7 +830,11 @@ export async function readMilitaryFlights(
     const requestBounds = normalizeBounds(req);
     const staleResult = await fetchStableStaleSnapshot(requestBounds);
     if (staleResult) {
-      return paginateResponseForCaller(redistributableOnly, staleResult.flights, staleResult.clusters, requestBounds, req);
+      return paginateResponseForCaller(redistributableOnly, staleResult.flights, staleResult.clusters, requestBounds, {
+        pageSize: req.pageSize,
+        offset: parsePageCursor(req.cursor).offset,
+        snapshotId: null,
+      });
     }
     if (!policy.allowProviderFetch) throw new SeedUnavailableError(MILITARY_FLIGHTS_SEED_KEY);
     markNoCacheResponse(ctx.request);

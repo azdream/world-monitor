@@ -3,7 +3,9 @@ const cache = vi.hoisted(() => ({ rows: new Map<string, unknown>(), reads: vi.fn
 vi.mock('../_shared/redis', () => ({
   getCachedJson: async (key: string) => { cache.reads(key); return cache.rows.get(key) ?? null; },
   readCachedJson: async (key: string) => { cache.reads(key); return cache.rows.has(key) ? { status: 'hit', value: cache.rows.get(key) } : { status: 'miss' }; },
-  getRawJson: async () => null, setCachedJson: async () => true, setCachedJsonIfAbsent: async () => true,
+  getRawJson: async () => null, setCachedJson: async () => true,
+  setCachedJsonIfAbsent: async (key: string, value: unknown) => { if (cache.rows.has(key)) return false; cache.rows.set(key, value); return true; },
+  runRedisPipeline: async (commands: Array<Array<string | number>>) => commands.map(([verb, key]) => verb === 'EXPIRE' ? { result: cache.rows.has(String(key)) ? 1 : 0 } : { error: 'unsupported' }),
   cachedFetchJson: async () => { throw new Error('Provider fetch forbidden'); },
 }));
 vi.mock('../_shared/required-seed', () => ({ readRequiredSeed: async (key: string, decode: (value: unknown) => unknown) => { cache.reads(key); const value = decode(cache.rows.get(key)); if (!value) throw new Error('Missing seed'); return value; } }));
@@ -103,8 +105,7 @@ describe('bounded country family handler', () => {
   });
   it('filters the same eligible cohort before pages for browser and MCP contexts', async () => {
     const flights = Array.from({ length: 240 }, (_, i) => ({ id: String(i), source: i % 2 === 0 ? 'opensky' : 'adsb.lol', location: { latitude: 48, longitude: 2 } }));
-    cache.rows.set('military:flights:stable-live:v1', { flights, coverage: 'global' });
-    cache.rows.set('military:flights:v1', { coverage: 'global', flights: flights.map(row => ({ id: row.id, lat: 48, lon: 2, sourceMeta: { source: row.source } })) });
+    cache.rows.set('military:flights:v1', { coverage: 'global', flights: flights.map(row => ({ id: row.id, lat: 48, lon: 2, lastSeenMs: 1792324800000, sourceMeta: { source: row.source } })) });
     const request = { neLat: 52, neLon: 10, swLat: 40, swLon: -6, pageSize: 100, cursor: '', operator: 'MILITARY_OPERATOR_UNSPECIFIED' as const, aircraftType: 'MILITARY_AIRCRAFT_TYPE_UNSPECIFIED' as const };
     const a = await readMilitaryFlights(context(), request, { redistributableOnly: true, allowProviderFetch: false });
     const b = await readMilitaryFlights(context(), request, { redistributableOnly: true, allowProviderFetch: false });
@@ -113,7 +114,8 @@ describe('bounded country family handler', () => {
     expect(a.flights.every(row => row.source === 'adsb.lol')).toBe(true);
     expect(new Set(a.flights.map(row => row.id)).size).toBe(100);
     const first = await getCountrySignalObservations(context(), req('COUNTRY_SIGNAL_FAMILY_FLIGHT_PAGE'));
-    expect(first.flightPage?.pagination?.nextCursor).toBe('FR:w0:100');
+    // The seed carries no fetchedAt here, so the cursor binds to a row fingerprint.
+    expect(first.flightPage?.pagination?.nextCursor).toMatch(/^FR:w0:f[0-9a-f]{8}:100$/);
     const second = await getCountrySignalObservations(context(), { ...req('COUNTRY_SIGNAL_FAMILY_FLIGHT_PAGE'), cursor: first.flightPage!.pagination!.nextCursor });
     expect(second.flightPage?.flights).toHaveLength(20);
     expect(new Set([...first.flightPage!.flights, ...second.flightPage!.flights].map(row => row.id)).size).toBe(120);
