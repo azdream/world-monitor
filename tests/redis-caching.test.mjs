@@ -121,6 +121,20 @@ function applySetToStore(store, url, init) {
   return jsonResponse({ result: 'OK' });
 }
 
+// `runRedisPipeline` posts `[[verb, key, ...args], ...]` to `/pipeline`.
+// Only EXPIRE is modelled: 1 when the key exists, 0 when it does not.
+function isPipelineRequest(url) {
+  return String(url).endsWith('/pipeline');
+}
+
+function applyPipelineToStore(store, init, commands = []) {
+  const body = JSON.parse(String(init.body));
+  commands.push(...body);
+  return jsonResponse(body.map(([verb, key]) => (
+    String(verb).toUpperCase() === 'EXPIRE' ? { result: store.has(key) ? 1 : 0 } : { error: `unsupported ${verb}` }
+  )));
+}
+
 describe('redis caching behavior', { concurrency: 1 }, () => {
   it('keeps followers coalesced until the caller-owned positive commit finishes', async () => {
     const redis = await importRedisFresh();
@@ -3388,8 +3402,9 @@ export const RATE_LIMIT_DEGRADED_HEADERS = { 'X-RateLimit-Mode': 'degraded', 'Re
 });
 
 describe('military flights bbox behavior', { concurrency: 1 }, () => {
-  const stableLiveCacheKey = 'military:flights:stable-live:v1';
+  const liveSnapshotCopyPrefix = 'military:flights:stable-live:v2:';
   const stableStaleCacheKey = 'military:flights:stable-stale:v1';
+  const liveSnapshotCopyKeys = (store) => [...store.keys()].filter((key) => key.startsWith(liveSnapshotCopyPrefix));
 
   async function importListMilitaryFlights() {
     return importPatchedTsModule('server/worldmonitor/military/v1/list-military-flights.ts', {
@@ -3502,8 +3517,8 @@ describe('military flights bbox behavior', { concurrency: 1 }, () => {
       );
       assert.deepEqual(
         redisSetKeys,
-        [stableLiveCacheKey],
-        'concurrent global seed requests should publish one shared cursor snapshot',
+        [],
+        'single-page answers emit no cursor, so they need no continuation copy',
       );
       assert.equal(openskyCalls, 0, 'live seed coverage should prevent an OpenSky fetch');
       assert.deepEqual(europe.flights.map((flight) => flight.id), ['adsb-ae0301']);
@@ -3568,7 +3583,7 @@ describe('military flights bbox behavior', { concurrency: 1 }, () => {
       assert.deepEqual(result.pagination, { nextCursor: '', totalCount: 2 });
       assert.deepEqual(
         redisKeys,
-        [stableLiveCacheKey, 'military:flights:v1', stableLiveCacheKey],
+        ['military:flights:v1'],
         'an authoritative seed should be filtered for the caller without a provider cache entry',
       );
     } finally {
@@ -3668,7 +3683,7 @@ describe('military flights bbox behavior', { concurrency: 1 }, () => {
         { request: new Request('https://wm.test/api/military/v1/list-military-flights') },
         seededRequest,
       );
-      assert.deepEqual(redisKeys, [stableLiveCacheKey, 'military:flights:v1', stableLiveCacheKey]);
+      assert.deepEqual(redisKeys, ['military:flights:v1']);
       assert.equal(openskyCalls, 0);
       assert.deepEqual(result, { flights: [], clusters: [], pagination: { nextCursor: '', totalCount: 0 } });
     } finally {
@@ -3760,7 +3775,7 @@ describe('military flights bbox behavior', { concurrency: 1 }, () => {
         { request: new Request('https://wm.test/api/military/v1/list-military-flights') },
         seededRequest,
       );
-      assert.deepEqual(redisKeys.slice(0, 2), [stableLiveCacheKey, 'military:flights:v1']);
+      assert.equal(redisKeys[0], 'military:flights:v1');
       assert.equal(openskyCalls, 0, 'Redis read failure must fail closed instead of amplifying OpenSky');
       assert.deepEqual(result, { flights: [], clusters: [], pagination: { nextCursor: '', totalCount: 0 } });
     } finally {
@@ -3770,76 +3785,176 @@ describe('military flights bbox behavior', { concurrency: 1 }, () => {
     }
   });
 
-  it('keeps seeded cursor pagination on a shared snapshot across edge isolates while the root rotates', async () => {
-    const firstIsolate = await importListMilitaryFlights();
-    const restoreEnv = withEnv({
-      UPSTASH_REDIS_REST_URL: 'https://redis.test',
-      UPSTASH_REDIS_REST_TOKEN: 'token',
-      LOCAL_API_MODE: undefined,
-      WS_RELAY_URL: 'wss://relay.test',
-      VERCEL_ENV: undefined,
-      VERCEL_GIT_COMMIT_SHA: undefined,
-    });
-    const originalFetch = globalThis.fetch;
+  // Redis double for the live-snapshot cursor tests: the seeder owns the root
+  // key, the handler owns per-snapshot copies (GET, SET NX EX, EXPIRE).
+  function militarySnapshotRedis(initialRoot) {
     const store = new Map();
-    let rootReads = 0;
-
-    globalThis.fetch = async (url, init) => {
-      const raw = String(url);
-      if (raw.includes('/get/')) {
-        const key = decodeURIComponent(raw.split('/get/')[1] || '');
-        if (key === 'military:flights:v1') {
-          rootReads += 1;
-          const flights = rootReads === 1
-            ? [
-              { id: 'seed-a', callsign: 'RCH501', lat: 20.2, lon: 10.2 },
-              { id: 'seed-b', callsign: 'RCH502', lat: 20.3, lon: 10.3 },
-            ]
-            : [{ id: 'seed-new', callsign: 'RCH599', lat: 20.4, lon: 10.4 }];
-          return jsonResponse({ result: JSON.stringify({ flights, fetchedAt: Date.now() }) });
+    const reads = [];
+    const sets = [];
+    const pipelineCommands = [];
+    let root = initialRoot;
+    return {
+      store,
+      reads,
+      sets,
+      pipelineCommands,
+      rootReads: () => reads.filter((key) => key === 'military:flights:v1').length,
+      publish(next) { root = next; },
+      async fetch(url, init) {
+        const raw = String(url);
+        if (raw.includes('/get/')) {
+          const key = decodeURIComponent(raw.split('/get/')[1] || '');
+          reads.push(key);
+          if (key === 'military:flights:v1') return jsonResponse({ result: root ? JSON.stringify(root) : null });
+          return jsonResponse({ result: store.get(key) ?? null });
         }
-        return jsonResponse({ result: store.get(key) ?? null });
-      }
-      if (isSetRequest(url, init)) return applySetToStore(store, url, init);
-      throw new Error(`Unexpected fetch URL: ${raw}`);
+        if (isPipelineRequest(url)) return applyPipelineToStore(store, init, pipelineCommands);
+        if (isSetRequest(url, init)) {
+          sets.push(parseSetRequest(url, init));
+          return applySetToStore(store, url, init);
+        }
+        throw new Error(`Unexpected fetch URL: ${raw}`);
+      },
     };
+  }
+
+  const withMilitaryRedisEnv = () => withEnv({
+    UPSTASH_REDIS_REST_URL: 'https://redis.test',
+    UPSTASH_REDIS_REST_TOKEN: 'token',
+    LOCAL_API_MODE: undefined,
+    WS_RELAY_URL: 'wss://relay.test',
+    VERCEL_ENV: undefined,
+    VERCEL_GIT_COMMIT_SHA: undefined,
+  });
+  // Rows sit inside seededRequest, in publish order.
+  const seedRoot = (fetchedAt, ids) => ({
+    flights: ids.map((id, index) => ({ id, callsign: `RCH${600 + index}`, lat: 20.1 + index / 100, lon: 10.1 + index / 100 })),
+    coverage: 'global',
+    fetchedAt,
+  });
+  const militaryCtx = () => ({ request: new Request('https://wm.test/api/military/v1/list-military-flights') });
+  const OLDER_PUBLISH = 1_763_536_837_000;
+  const NEWER_PUBLISH = 1_763_537_137_000;
+
+  it('serves a first page from a newer publish while an open cursor finishes its older snapshot', async () => {
+    const firstIsolate = await importListMilitaryFlights();
+    let secondIsolate;
+    const restoreEnv = withMilitaryRedisEnv();
+    const originalFetch = globalThis.fetch;
+    const redis = militarySnapshotRedis(seedRoot(OLDER_PUBLISH, ['a1', 'a2', 'a3', 'a4', 'a5']));
+    globalThis.fetch = redis.fetch;
 
     try {
-      const ctx = { request: new Request('https://wm.test/api/military/v1/list-military-flights') };
-      const first = await firstIsolate.module.listMilitaryFlights(ctx, { ...seededRequest, pageSize: 1, cursor: '' });
-      assert.ok(store.has(stableLiveCacheKey), 'page one must publish a shared stable seed snapshot');
+      const first = await firstIsolate.module.listMilitaryFlights(militaryCtx(), { ...seededRequest, pageSize: 2, cursor: '' });
+      assert.deepEqual(first.flights.map((flight) => flight.id), ['a1', 'a2']);
+      assert.equal(first.pagination?.nextCursor, `${OLDER_PUBLISH}:2`);
 
-      // Importing through another temporary module simulates a different edge
-      // isolate with no process-local state. If it rereads the mutable root,
-      // the next numeric offset would slice `seed-new` instead of `seed-b`.
-      const secondIsolate = await importListMilitaryFlights();
-      const second = await secondIsolate.module.listMilitaryFlights(ctx, {
-        ...seededRequest,
-        pageSize: 1,
-        cursor: first.pagination?.nextCursor ?? '',
-      });
-      secondIsolate.cleanup();
-      assert.deepEqual(first.flights.map((flight) => flight.id), ['seed-a']);
-      assert.deepEqual(second.flights.map((flight) => flight.id), ['seed-b']);
-      assert.equal(rootReads, 1, 'continuation pages must not reread the mutable seed root');
+      // The seeder's next run: a3 landed and b1 took off. A bare offset of 2
+      // into this root would repeat a2 and skip a3.
+      redis.publish(seedRoot(NEWER_PUBLISH, ['b1', 'a1', 'a2', 'a4', 'a5']));
+
+      // A fresh module has no process state, like another edge isolate.
+      secondIsolate = await importListMilitaryFlights();
+      const fresh = await secondIsolate.module.listMilitaryFlights(militaryCtx(), { ...seededRequest, pageSize: 2, cursor: '' });
+      assert.deepEqual(fresh.flights.map((flight) => flight.id), ['b1', 'a1'], 'a new first page must read the newer publish');
+      assert.equal(fresh.pagination?.nextCursor, `${NEWER_PUBLISH}:2`);
+
+      const rootReadsBeforeContinuation = redis.rootReads();
+      const traversal = [...first.flights];
+      let cursor = first.pagination?.nextCursor ?? '';
+      while (cursor) {
+        const page = await secondIsolate.module.listMilitaryFlights(militaryCtx(), { ...seededRequest, pageSize: 2, cursor });
+        assert.equal(page.pagination?.totalCount, 5);
+        traversal.push(...page.flights);
+        cursor = page.pagination?.nextCursor ?? '';
+        assert.ok(cursor === '' || cursor.startsWith(`${OLDER_PUBLISH}:`), `cursor ${cursor} must stay on the older snapshot`);
+      }
+      assert.deepEqual(
+        traversal.map((flight) => flight.id),
+        ['a1', 'a2', 'a3', 'a4', 'a5'],
+        'the open cursor must page its own snapshot without duplicates or gaps',
+      );
+      assert.equal(redis.rootReads(), rootReadsBeforeContinuation, 'continuation pages read the copy, not the root');
+      assert.deepEqual(
+        liveSnapshotCopyKeys(redis.store).sort(),
+        [`${liveSnapshotCopyPrefix}${OLDER_PUBLISH}`, `${liveSnapshotCopyPrefix}${NEWER_PUBLISH}`],
+      );
     } finally {
       firstIsolate.cleanup();
+      secondIsolate?.cleanup();
       globalThis.fetch = originalFetch;
       restoreEnv();
     }
   });
 
-  it('publishes the stable live snapshot first-writer-wins and returns the persisted winner', async () => {
+  it('renews an existing snapshot copy with EXPIRE instead of sending it again', async () => {
     const firstIsolate = await importListMilitaryFlights();
     const secondIsolate = await importListMilitaryFlights();
-    const restoreEnv = withEnv({
-      UPSTASH_REDIS_REST_URL: 'https://redis.test',
-      UPSTASH_REDIS_REST_TOKEN: 'token',
-      LOCAL_API_MODE: undefined,
-      WS_RELAY_URL: 'wss://relay.test',
-      VERCEL_ENV: undefined,
-      VERCEL_GIT_COMMIT_SHA: undefined,
-    });
+    const restoreEnv = withMilitaryRedisEnv();
+    const originalFetch = globalThis.fetch;
+    const redis = militarySnapshotRedis(seedRoot(OLDER_PUBLISH, ['a1', 'a2', 'a3']));
+    globalThis.fetch = redis.fetch;
+    const copyKey = `${liveSnapshotCopyPrefix}${OLDER_PUBLISH}`;
+
+    try {
+      const firstPage = { ...seededRequest, pageSize: 1, cursor: '' };
+      await firstIsolate.module.listMilitaryFlights(militaryCtx(), firstPage);
+      await firstIsolate.module.listMilitaryFlights(militaryCtx(), firstPage);
+      await secondIsolate.module.listMilitaryFlights(militaryCtx(), firstPage);
+
+      assert.deepEqual(
+        redis.sets.map(({ key, nx, ttlSeconds }) => ({ key, nx, ttlSeconds })),
+        [{ key: copyKey, nx: true, ttlSeconds: 600 }],
+        'only the first isolate to find no copy uploads one',
+      );
+      assert.deepEqual(
+        redis.pipelineCommands,
+        [['EXPIRE', copyKey, 600], ['EXPIRE', copyKey, 600]],
+        'an isolate checks a copy once per window; the second isolate renews the existing copy',
+      );
+    } finally {
+      firstIsolate.cleanup();
+      secondIsolate.cleanup();
+      globalThis.fetch = originalFetch;
+      restoreEnv();
+    }
+  });
+
+  it('continues a cursor from the root while it still holds the snapshot, then from the newest one once the copy is gone', async () => {
+    const { module, cleanup } = await importListMilitaryFlights();
+    const restoreEnv = withMilitaryRedisEnv();
+    const originalFetch = globalThis.fetch;
+    const redis = militarySnapshotRedis(seedRoot(OLDER_PUBLISH, ['a1', 'a2', 'a3', 'a4']));
+    globalThis.fetch = redis.fetch;
+
+    try {
+      const first = await module.listMilitaryFlights(militaryCtx(), { ...seededRequest, pageSize: 2, cursor: '' });
+      const cursor = first.pagination?.nextCursor ?? '';
+      assert.equal(cursor, `${OLDER_PUBLISH}:2`);
+      redis.store.delete(`${liveSnapshotCopyPrefix}${OLDER_PUBLISH}`);
+
+      const sameRoot = await module.listMilitaryFlights(militaryCtx(), { ...seededRequest, pageSize: 2, cursor });
+      assert.deepEqual(sameRoot.flights.map((flight) => flight.id), ['a3', 'a4'], 'the root still is the cursor snapshot');
+
+      // Past the retention window the cursor degrades to the behavior every
+      // cursor had before snapshots had ids: the same offset into the newest
+      // snapshot. A CDN-cached first page can outlive any copy, so this keeps
+      // serving rather than failing the traversal.
+      redis.publish(seedRoot(NEWER_PUBLISH, ['b1', 'a1', 'a2', 'a3', 'a4']));
+      const expired = await module.listMilitaryFlights(militaryCtx(), { ...seededRequest, pageSize: 2, cursor });
+      assert.deepEqual(expired.flights.map((flight) => flight.id), ['a2', 'a3']);
+      assert.equal(expired.pagination?.nextCursor, `${NEWER_PUBLISH}:4`, 'the next cursor binds to the snapshot actually served');
+    } finally {
+      cleanup();
+      globalThis.fetch = originalFetch;
+      restoreEnv();
+    }
+  });
+
+  it('binds concurrent first pages to the publish each one read', async () => {
+    const firstIsolate = await importListMilitaryFlights();
+    const secondIsolate = await importListMilitaryFlights();
+    const restoreEnv = withMilitaryRedisEnv();
     const originalFetch = globalThis.fetch;
     const store = new Map();
     let rootReads = 0;
@@ -3853,17 +3968,15 @@ describe('military flights bbox behavior', { concurrency: 1 }, () => {
         const key = decodeURIComponent(raw.split('/get/')[1] || '');
         if (key === 'military:flights:v1') {
           rootReads += 1;
-          const flights = rootReads === 1
-            ? [
-              { id: 'seed-a', callsign: 'RCH501', lat: 20.2, lon: 10.2 },
-              { id: 'seed-b', callsign: 'RCH502', lat: 20.3, lon: 10.3 },
-            ]
-            : [{ id: 'seed-new', callsign: 'RCH599', lat: 20.4, lon: 10.4 }];
+          const root = rootReads === 1
+            ? seedRoot(OLDER_PUBLISH, ['seed-a', 'seed-b'])
+            : seedRoot(NEWER_PUBLISH, ['seed-new']);
           await rootGate;
-          return jsonResponse({ result: JSON.stringify({ flights, coverage: 'global', fetchedAt: Date.now() }) });
+          return jsonResponse({ result: JSON.stringify(root) });
         }
         return jsonResponse({ result: store.get(key) ?? null });
       }
+      if (isPipelineRequest(url)) return applyPipelineToStore(store, init);
       if (isSetRequest(url, init)) {
         setBodies.push(JSON.parse(String(init.body)));
         return applySetToStore(store, url, init);
@@ -3872,30 +3985,27 @@ describe('military flights bbox behavior', { concurrency: 1 }, () => {
     };
 
     try {
-      const ctx = { request: new Request('https://wm.test/api/military/v1/list-military-flights') };
-      const firstPromise = firstIsolate.module.listMilitaryFlights(ctx, { ...seededRequest, pageSize: 1, cursor: '' });
-      const secondPromise = secondIsolate.module.listMilitaryFlights(ctx, { ...seededRequest, pageSize: 1, cursor: '' });
+      const firstPromise = firstIsolate.module.listMilitaryFlights(militaryCtx(), { ...seededRequest, pageSize: 1, cursor: '' });
+      const secondPromise = secondIsolate.module.listMilitaryFlights(militaryCtx(), { ...seededRequest, pageSize: 1, cursor: '' });
       for (let ticks = 0; ticks < 20 && rootReads < 2; ticks += 1) {
         await new Promise((resolveTick) => setImmediate(resolveTick));
       }
-      assert.equal(rootReads, 2, 'both isolates must miss the cold stable key and read the rotating root');
+      assert.equal(rootReads, 2, 'each isolate reads the root for its own first page');
       releaseRoot();
       const [first, second] = await Promise.all([firstPromise, secondPromise]);
-      const continuation = await secondIsolate.module.listMilitaryFlights(ctx, {
+      const continuation = await secondIsolate.module.listMilitaryFlights(militaryCtx(), {
         ...seededRequest,
         pageSize: 1,
         cursor: first.pagination?.nextCursor ?? '',
       });
 
-      assert.ok(setBodies.every((body) => body.includes('NX')), 'stable snapshot publication must use SET NX EX');
-      assert.ok(setBodies.length >= 2, 'the losing isolate must still attempt SET NX');
       assert.deepEqual(first.flights.map((flight) => flight.id), ['seed-a']);
-      assert.deepEqual(
-        second.flights.map((flight) => flight.id),
-        ['seed-a'],
-        'the losing isolate must return the persisted winner, not its later root snapshot',
-      );
-      assert.deepEqual(continuation.flights.map((flight) => flight.id), ['seed-b']);
+      assert.equal(first.pagination?.nextCursor, `${OLDER_PUBLISH}:1`);
+      assert.deepEqual(second.flights.map((flight) => flight.id), ['seed-new'], 'the later read serves the later publish');
+      assert.equal(second.pagination?.nextCursor, '');
+      assert.deepEqual(continuation.flights.map((flight) => flight.id), ['seed-b'], 'the other isolate continues the first snapshot');
+      assert.ok(setBodies.length > 0 && setBodies.every((body) => body.includes('NX')), 'snapshot copies are published with SET NX EX');
+      assert.deepEqual(liveSnapshotCopyKeys(store), [`${liveSnapshotCopyPrefix}${OLDER_PUBLISH}`]);
     } finally {
       firstIsolate.cleanup();
       secondIsolate.cleanup();
@@ -3905,45 +4015,24 @@ describe('military flights bbox behavior', { concurrency: 1 }, () => {
     }
   });
 
-  it('fails closed when stable snapshot publication or readback cannot be confirmed', async () => {
-    const firstIsolate = await importListMilitaryFlights();
-    const secondIsolate = await importListMilitaryFlights();
-    const restoreEnv = withEnv({
-      UPSTASH_REDIS_REST_URL: 'https://redis.test',
-      UPSTASH_REDIS_REST_TOKEN: 'token',
-      LOCAL_API_MODE: undefined,
-      WS_RELAY_URL: 'wss://relay.test',
-      VERCEL_ENV: undefined,
-      VERCEL_GIT_COMMIT_SHA: undefined,
-    });
+  it('fails closed when the snapshot copy a cursor needs cannot be confirmed', async () => {
+    const { module, cleanup } = await importListMilitaryFlights();
+    const restoreEnv = withMilitaryRedisEnv();
     const originalFetch = globalThis.fetch;
     let openskyCalls = 0;
+    const unavailable = { ok: false, status: 503, async json() { return null; } };
 
     globalThis.fetch = async (url, init) => {
       const raw = String(url);
       if (raw.includes('/get/')) {
         const key = decodeURIComponent(raw.split('/get/')[1] || '');
         if (key === 'military:flights:v1') {
-          return jsonResponse({
-            result: JSON.stringify({
-              flights: [
-                { id: 'unpersisted-a', callsign: 'RCH900', lat: 20.2, lon: 10.2 },
-                { id: 'unpersisted-b', callsign: 'RCH901', lat: 20.3, lon: 10.3 },
-              ],
-              coverage: 'global',
-              fetchedAt: Date.now(),
-            }),
-          });
+          return jsonResponse({ result: JSON.stringify(seedRoot(OLDER_PUBLISH, ['unpersisted-a', 'unpersisted-b'])) });
         }
         return jsonResponse({ result: null });
       }
-      if (isSetRequest(url, init)) {
-        return {
-          ok: false,
-          status: 503,
-          async json() { return null; },
-        };
-      }
+      // Neither EXPIRE nor SET can be confirmed, so the copy is read back.
+      if (isPipelineRequest(url) || isSetRequest(url, init)) return unavailable;
       if (raw.includes('/opensky') || raw.includes('opensky-network.org')) {
         openskyCalls += 1;
         return jsonResponse({ states: [] });
@@ -3952,39 +4041,21 @@ describe('military flights bbox behavior', { concurrency: 1 }, () => {
     };
 
     try {
-      const ctx = { request: new Request('https://wm.test/api/military/v1/list-military-flights') };
-      const result = await firstIsolate.module.listMilitaryFlights(ctx, {
-        ...seededRequest,
-        pageSize: 1,
-        cursor: '',
-      });
-      assert.deepEqual(
-        result.flights.map((flight) => flight.id),
-        [],
-        'an unpersisted local snapshot must not become a cursor source',
-      );
-      assert.equal(
-        result.pagination?.nextCursor,
-        '',
-        'unconfirmed publication must fail closed before a numeric cursor is emitted',
-      );
+      const paged = await module.listMilitaryFlights(militaryCtx(), { ...seededRequest, pageSize: 1, cursor: '' });
+      assert.deepEqual(paged.flights.map((flight) => flight.id), [], 'an uncopied snapshot must not become a cursor source');
+      assert.equal(paged.pagination?.nextCursor, '', 'no cursor may be emitted that nothing can continue');
       assert.equal(openskyCalls, 0, 'failed publication must fail closed instead of opening OpenSky');
 
-      const continued = await secondIsolate.module.listMilitaryFlights(ctx, {
-        ...seededRequest,
-        pageSize: 1,
-        cursor: '1',
-      });
+      const whole = await module.listMilitaryFlights(militaryCtx(), { ...seededRequest, pageSize: 100, cursor: '' });
       assert.deepEqual(
-        continued.flights.map((flight) => flight.id),
-        [],
-        'another isolate must not continue an unconfirmed snapshot at a numeric cursor',
+        whole.flights.map((flight) => flight.id),
+        ['unpersisted-a', 'unpersisted-b'],
+        'an answer that fits one page emits no cursor, so it does not depend on the copy',
       );
-      assert.equal(continued.pagination?.nextCursor, '');
+      assert.equal(whole.pagination?.nextCursor, '');
       assert.equal(openskyCalls, 0);
     } finally {
-      firstIsolate.cleanup();
-      secondIsolate.cleanup();
+      cleanup();
       globalThis.fetch = originalFetch;
       restoreEnv();
     }
@@ -5026,7 +5097,7 @@ describe('military flights bbox behavior', { concurrency: 1 }, () => {
 
     try {
       const result = await module.listMilitaryFlights({}, request);
-      assert.equal(redisGetCalls, 3, 'an uncovered bbox should read the stable and live seeds before its quantized cache');
+      assert.equal(redisGetCalls, 2, 'an uncovered bbox should read the live seed once before its quantized cache');
       assert.equal(openskyCalls, 0, 'cache hit should avoid upstream fetch');
       assert.deepEqual(
         result.flights.map((flight) => flight.id),
