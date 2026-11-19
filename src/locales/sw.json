@@ -2555,6 +2555,54 @@
         "failedToLoad": "Imeshindwa kupakia"
       }
     },
+    "drugPipeline": {
+      "infoTooltip": "<strong>Dawa Zinazoendelezwa</strong> Majaribio ya awamu ya 3 kulingana na robo ya mapema zaidi inayokadiriwa ya uamuzi wa mdhibiti, pamoja na idhini za hivi karibuni za FDA. Vipindi ni makadirio, si tarehe zilizotangazwa. Vyanzo: ClinicalTrials.gov, openFDA, ChEMBL.",
+      "title": "Dawa Zinazoendelezwa",
+      "tabs": {
+        "pipeline": "Zinazoendelezwa",
+        "approvals": "Idhini za karibuni"
+      },
+      "allModalities": "Aina zote za dawa",
+      "allAreas": "Nyanja zote za tiba",
+      "novelOnly": "Dawa mpya pekee (ficha upanuzi wa matumizi)",
+      "newDrug": "MPYA",
+      "labelExpansion": "UPANUZI",
+      "priorityReview": "KIPAUMBELE",
+      "estimatedWindow": "Uamuzi unakadiriwa {{window}}",
+      "completedOn": "Jaribio lilikamilika {{date}}",
+      "completionExpected": "Jaribio litakamilika {{date}}",
+      "earliestFrom": "MAPEMA ZAIDI {{quarter}}",
+      "showingOf": "Inaonyesha majaribio {{shown}} ya karibuni kati ya {{total}}",
+      "totalTrials": "Majaribio: {{total}}",
+      "noMatches": "Hakuna kinacholingana na vichujio hivi",
+      "disclaimer": "Vipindi vinavyokadiriwa vinachukulia miezi 4–10 kutoka ukamilishaji mkuu hadi kuwasilisha ombi na mapitio ya miezi 6–12. Majaribio yanaweza kushindwa au kuchelewa, na tarehe ya uamuzi iliyotangazwa na mfadhili hutangulia makadirio haya kila mara.",
+      "approvalsNote": "Idhini za awali za NDA na BLA kutoka Drugs@FDA katika siku 180 zilizopita. Chanjo na tiba za seli au jeni zinazosimamiwa na CBER hazijajumuishwa.",
+      "modality": {
+        "small_molecule": "Molekuli ndogo",
+        "antibody": "Kingamwili",
+        "cell_therapy": "Tiba ya seli",
+        "gene_therapy": "Tiba ya jeni",
+        "vaccine": "Chanjo",
+        "peptide_protein": "Peptidi / protini",
+        "other": "Nyingine"
+      },
+      "area": {
+        "oncology": "Saratani",
+        "metabolic": "Kimetaboliki",
+        "neurology": "Neva",
+        "cardiovascular": "Moyo na mishipa",
+        "immunology": "Kinga",
+        "infectious": "Magonjwa ya kuambukiza",
+        "respiratory": "Upumuaji",
+        "psychiatry": "Afya ya akili",
+        "hematology": "Damu",
+        "other": "Nyingine"
+      },
+      "errors": {
+        "noData": "Hakuna data ya dawa zinazoendelezwa",
+        "failedToLoad": "Imeshindwa kupakia"
+      }
+    },
     "earningsCalendar": {
       "infoTooltip": "<strong>Earnings Calendar</strong> Kutolewa kwa faida inayokuja na ya karibuni kwa kampuni kubwa za umma. Inaonyesha makadirio ya sehemu halisi ya faida kwa kulinganisha na matukio halisi, mapato, na uainishaji wa kushangilia/kupoteza. Chanzo: wanatolea data ya fedha.",
       "title": "Kalenda ya Mapato",

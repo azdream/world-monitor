@@ -15,6 +15,7 @@ import type { MarketServiceClient as MarketServiceClientInstance } from '@/gener
 import type { MilitaryServiceClient as MilitaryServiceClientInstance } from '@/generated/client/worldmonitor/military/v1/service_client';
 import type { NaturalServiceClient as NaturalServiceClientInstance } from '@/generated/client/worldmonitor/natural/v1/service_client';
 import type { NewsServiceClient as NewsServiceClientInstance } from '@/generated/client/worldmonitor/news/v1/service_client';
+import type { PharmaServiceClient as PharmaServiceClientInstance } from '@/generated/client/worldmonitor/pharma/v1/service_client';
 import type { PositiveEventsServiceClient as PositiveEventsServiceClientInstance } from '@/generated/client/worldmonitor/positive_events/v1/service_client';
 import type { PredictionServiceClient as PredictionServiceClientInstance } from '@/generated/client/worldmonitor/prediction/v1/service_client';
 import type { RadiationServiceClient as RadiationServiceClientInstance } from '@/generated/client/worldmonitor/radiation/v1/service_client';
@@ -178,6 +179,11 @@ export const NaturalServiceClient = createLazyRpcClientConstructor<NaturalServic
 export const NewsServiceClient = createLazyRpcClientConstructor<NewsServiceClientInstance>(async () => {
   const module = await import('@/generated/client/worldmonitor/news/v1/service_client');
   return module.NewsServiceClient;
+});
+
+export const PharmaServiceClient = createLazyRpcClientConstructor<PharmaServiceClientInstance>(async () => {
+  const module = await import('@/generated/client/worldmonitor/pharma/v1/service_client');
+  return module.PharmaServiceClient;
 });
 
 export const PositiveEventsServiceClient = createLazyRpcClientConstructor<PositiveEventsServiceClientInstance>(async () => {

@@ -2278,6 +2278,54 @@
       },
       "methodologyNote": "Les niveaux Alerte / Avertissement / Surveillance proviennent d'un classificateur de mots clés éditoriaux — voir /docs/methodology/disease-alert-level pour le tableau des mots clés et les limitations."
     },
+    "drugPipeline": {
+      "infoTooltip": "<strong>Pipeline de médicaments</strong> Essais de phase 3 promus par l'industrie, regroupés selon le premier trimestre où une décision réglementaire pourrait intervenir, ainsi que les approbations initiales récentes de la FDA. Les fenêtres de décision sont des estimations calculées à partir de la date d'achèvement primaire de chaque essai, et non des dates annoncées. Sources : ClinicalTrials.gov, openFDA, ChEMBL.",
+      "title": "Pipeline de médicaments",
+      "tabs": {
+        "pipeline": "En développement",
+        "approvals": "Approbations récentes"
+      },
+      "allModalities": "Tous les types de médicaments",
+      "allAreas": "Toutes les aires thérapeutiques",
+      "novelOnly": "Nouveaux médicaments uniquement (masquer les extensions d'indication)",
+      "newDrug": "NOUVEAU",
+      "labelExpansion": "EXTENSION",
+      "priorityReview": "PRIORITAIRE",
+      "estimatedWindow": "Décision est. {{window}}",
+      "completedOn": "Essai terminé {{date}}",
+      "completionExpected": "Fin de l'essai {{date}}",
+      "earliestFrom": "AU PLUS TÔT {{quarter}}",
+      "showingOf": "Affichage des {{shown}} essais les plus proches sur {{total}}",
+      "totalTrials": "{{total}} essais",
+      "noMatches": "Aucune entrée ne correspond à ces filtres",
+      "disclaimer": "Les fenêtres estimées supposent 4 à 10 mois entre l'achèvement primaire et le dépôt du dossier, puis 6 à 12 mois d'examen. Les essais peuvent échouer ou prendre du retard, et une date de décision annoncée par le promoteur prévaut toujours sur cette estimation.",
+      "approvalsNote": "Approbations initiales de NDA et de BLA issues de Drugs@FDA sur les 180 derniers jours. Les vaccins et les thérapies cellulaires ou géniques réglementés par le CBER ne sont pas inclus.",
+      "modality": {
+        "small_molecule": "Petite molécule",
+        "antibody": "Anticorps",
+        "cell_therapy": "Thérapie cellulaire",
+        "gene_therapy": "Thérapie génique",
+        "vaccine": "Vaccin",
+        "peptide_protein": "Peptide / protéine",
+        "other": "Autre"
+      },
+      "area": {
+        "oncology": "Oncologie",
+        "metabolic": "Métabolisme",
+        "neurology": "Neurologie",
+        "cardiovascular": "Cardiovasculaire",
+        "immunology": "Immunologie",
+        "infectious": "Maladies infectieuses",
+        "respiratory": "Respiratoire",
+        "psychiatry": "Psychiatrie",
+        "hematology": "Hématologie",
+        "other": "Autre"
+      },
+      "errors": {
+        "noData": "Aucune donnée de pipeline disponible",
+        "failedToLoad": "Impossible de charger"
+      }
+    },
     "earningsCalendar": {
       "infoTooltip": "<strong>Earnings Calendar</strong> Publications de résultats à venir et récentes pour les grandes sociétés publiques. Affiche les estimations de bénéfice par action par rapport aux réalisations, le chiffre d'affaires et la classification des dépassements/manques. Source : fournisseurs de données financières.",
       "title": "Calendrier des résultats",

@@ -92,6 +92,7 @@ export * from './NqPulsePanel';
 export * from './NqCatalystsPanel';
 export * from './YieldCurvePanel';
 export * from './EarningsCalendarPanel';
+export * from './DrugPipelinePanel';
 export * from './MaterialEventsPanel';
 export * from './EconomicCalendarPanel';
 export * from './CotPositioningPanel';

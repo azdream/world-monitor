@@ -227,6 +227,7 @@ const EXCLUDED_BOOTSTRAP_KEYS = {
 };
 
 const EXCLUDED_RPC_ROUTES = {
+  '/api/pharma/v1/list-drug-pipeline': 'Decision windows are heuristic estimates and approvals cover CDER only; both need the panel notes, so use the Drug Pipeline panel',
   '/api/cyber/v1/get-network-info': 'Opt-in passive lookup for an arbitrary public IP; requires provider authorization and attribution in the Cyber Threat popup',
   '/api/maritime/v1/list-ukmto-incidents': 'Publisher claims requiring source attribution and freshness; use the UKMTO panel',
   "/api/displacement/v1/get-cross-border-movements": "Requires source attribution and per-source freshness; use the cross-border displacement panel",

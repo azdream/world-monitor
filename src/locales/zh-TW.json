@@ -2258,6 +2258,54 @@
       },
       "methodologyNote": "警報 / 警告 / 監視級別來自編輯關鍵詞分類器 — 請參閱 /docs/methodology/disease-alert-level 瞭解關鍵詞表和限制。"
     },
+    "drugPipeline": {
+      "infoTooltip": "<strong>新藥管線</strong> 按最早可能出現監管決定的季度分組展示企業申辦的3期臨床試驗，並附近期FDA首次批准。決定視窗是根據各試驗主要完成日期推算的估計值，並非官方公佈日期。來源：ClinicalTrials.gov、openFDA、ChEMBL。",
+      "title": "新藥管線",
+      "tabs": {
+        "pipeline": "管線",
+        "approvals": "近期批准"
+      },
+      "allModalities": "全部藥物型別",
+      "allAreas": "全部治療領域",
+      "novelOnly": "僅看新藥（隱藏適應症擴充套件）",
+      "newDrug": "新藥",
+      "labelExpansion": "適應症擴充套件",
+      "priorityReview": "優先審評",
+      "estimatedWindow": "預計決定 {{window}}",
+      "completedOn": "試驗已完成 {{date}}",
+      "completionExpected": "試驗預計結束 {{date}}",
+      "earliestFrom": "最早 {{quarter}}",
+      "showingOf": "共{{total}}項試驗，顯示最近的{{shown}}項",
+      "totalTrials": "{{total}}項試驗",
+      "noMatches": "沒有符合篩選條件的條目",
+      "disclaimer": "預計視窗假設從主要完成到提交申請需4–10個月，審評需6–12個月。試驗可能失敗或延期，申辦方公佈的決定日期始終優先於此估計。",
+      "approvalsNote": "過去180天內Drugs@FDA收錄的NDA和BLA首次批准。不包括由CBER監管的疫苗及細胞或基因療法。",
+      "modality": {
+        "small_molecule": "小分子",
+        "antibody": "抗體",
+        "cell_therapy": "細胞療法",
+        "gene_therapy": "基因療法",
+        "vaccine": "疫苗",
+        "peptide_protein": "多肽/蛋白",
+        "other": "其他"
+      },
+      "area": {
+        "oncology": "腫瘤",
+        "metabolic": "代謝",
+        "neurology": "神經",
+        "cardiovascular": "心血管",
+        "immunology": "免疫",
+        "infectious": "感染",
+        "respiratory": "呼吸",
+        "psychiatry": "精神",
+        "hematology": "血液",
+        "other": "其他"
+      },
+      "errors": {
+        "noData": "暫無新藥管線資料",
+        "failedToLoad": "載入失敗"
+      }
+    },
     "earningsCalendar": {
       "infoTooltip": "<strong>財報日曆</strong>主要上市公司即將釋出和最近釋出的財報。顯示每股收益預期值與實際值、收入和超預期/未達預期分類。資料來源：財務資料供應商。",
       "title": "財報日曆",

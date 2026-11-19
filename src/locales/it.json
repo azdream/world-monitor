@@ -2278,6 +2278,54 @@
       },
       "methodologyNote": "I livelli Alert / Warning / Watch provengono da un classificatore di parole chiave editoriale — vedi /docs/methodology/disease-alert-level per la tabella delle parole chiave e i limiti."
     },
+    "drugPipeline": {
+      "infoTooltip": "<strong>Pipeline Farmaci</strong> Studi di fase 3 sponsorizzati dall'industria, raggruppati per il primo trimestre in cui potrebbe arrivare una decisione regolatoria, più le recenti approvazioni originali della FDA. Le finestre di decisione sono stime ricavate dalla data di completamento primario di ogni studio, non date annunciate. Fonti: ClinicalTrials.gov, openFDA, ChEMBL.",
+      "title": "Pipeline Farmaci",
+      "tabs": {
+        "pipeline": "In sviluppo",
+        "approvals": "Approvazioni recenti"
+      },
+      "allModalities": "Tutti i tipi di farmaco",
+      "allAreas": "Tutte le aree terapeutiche",
+      "novelOnly": "Solo nuovi farmaci (nascondi estensioni di indicazione)",
+      "newDrug": "NUOVO",
+      "labelExpansion": "ESTENSIONE",
+      "priorityReview": "PRIORITARIA",
+      "estimatedWindow": "Decisione stim. {{window}}",
+      "completedOn": "Studio concluso {{date}}",
+      "completionExpected": "Fine studio {{date}}",
+      "earliestFrom": "NON PRIMA DI {{quarter}}",
+      "showingOf": "Mostrati i {{shown}} studi più vicini su {{total}}",
+      "totalTrials": "{{total}} studi",
+      "noMatches": "Nessuna voce corrisponde a questi filtri",
+      "disclaimer": "Le finestre stimate presuppongono 4–10 mesi dal completamento primario alla presentazione della domanda e una revisione di 6–12 mesi. Gli studi possono fallire o slittare, e una data di decisione annunciata dallo sponsor prevale sempre su questa stima.",
+      "approvalsNote": "Approvazioni originali di NDA e BLA da Drugs@FDA negli ultimi 180 giorni. Non sono inclusi i vaccini e le terapie cellulari o geniche regolati dal CBER.",
+      "modality": {
+        "small_molecule": "Piccola molecola",
+        "antibody": "Anticorpo",
+        "cell_therapy": "Terapia cellulare",
+        "gene_therapy": "Terapia genica",
+        "vaccine": "Vaccino",
+        "peptide_protein": "Peptide / proteina",
+        "other": "Altro"
+      },
+      "area": {
+        "oncology": "Oncologia",
+        "metabolic": "Metabolico",
+        "neurology": "Neurologia",
+        "cardiovascular": "Cardiovascolare",
+        "immunology": "Immunologia",
+        "infectious": "Malattie infettive",
+        "respiratory": "Respiratorio",
+        "psychiatry": "Psichiatria",
+        "hematology": "Ematologia",
+        "other": "Altro"
+      },
+      "errors": {
+        "noData": "Nessun dato sulla pipeline disponibile",
+        "failedToLoad": "Caricamento non riuscito"
+      }
+    },
     "earningsCalendar": {
       "infoTooltip": "<strong>Earnings Calendar</strong> Rapporti di utili imminenti e recenti per le principali società quotate in borsa. Mostra stime degli utili per azione rispetto ai dati effettivi, ricavi e classificazione di battuta/mancanza. Fonte: fornitori di dati finanziari.",
       "title": "Calendario Risultati",

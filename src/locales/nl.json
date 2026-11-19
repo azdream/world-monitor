@@ -1884,6 +1884,54 @@
       },
       "methodologyNote": "Alert / Warning / Watch niveaus komen uit een redactionele trefwoord-classificatie — zie /docs/methodology/disease-alert-level voor de trefwoordtabel en beperkingen."
     },
+    "drugPipeline": {
+      "infoTooltip": "<strong>Geneesmiddelenpijplijn</strong> Door de industrie gesponsorde fase 3-studies, gegroepeerd per vroegste kwartaal waarin een registratiebesluit kan vallen, plus recente oorspronkelijke FDA-goedkeuringen. Beslisvensters zijn schattingen op basis van de primaire einddatum van elke studie, geen aangekondigde data. Bronnen: ClinicalTrials.gov, openFDA, ChEMBL.",
+      "title": "Geneesmiddelenpijplijn",
+      "tabs": {
+        "pipeline": "Pijplijn",
+        "approvals": "Recente goedkeuringen"
+      },
+      "allModalities": "Alle geneesmiddeltypen",
+      "allAreas": "Alle therapeutische gebieden",
+      "novelOnly": "Alleen nieuwe geneesmiddelen (indicatie-uitbreidingen verbergen)",
+      "newDrug": "NIEUW",
+      "labelExpansion": "UITBREIDING",
+      "priorityReview": "PRIORITEIT",
+      "estimatedWindow": "Besluit verwacht {{window}}",
+      "completedOn": "Studie afgerond {{date}}",
+      "completionExpected": "Studie eindigt {{date}}",
+      "earliestFrom": "OP ZIJN VROEGST {{quarter}}",
+      "showingOf": "De eerstvolgende {{shown}} van {{total}} studies",
+      "totalTrials": "{{total}} studies",
+      "noMatches": "Geen items voor deze filters",
+      "disclaimer": "Geschatte vensters gaan uit van 4–10 maanden tussen primaire afronding en indiening en een beoordeling van 6–12 maanden. Studies kunnen mislukken of vertraging oplopen, en een door de sponsor aangekondigde beslisdatum gaat altijd voor op deze schatting.",
+      "approvalsNote": "Oorspronkelijke NDA- en BLA-goedkeuringen uit Drugs@FDA van de afgelopen 180 dagen. Vaccins en cel- of gentherapieën die onder CBER vallen, zijn niet opgenomen.",
+      "modality": {
+        "small_molecule": "Klein molecuul",
+        "antibody": "Antilichaam",
+        "cell_therapy": "Celtherapie",
+        "gene_therapy": "Gentherapie",
+        "vaccine": "Vaccin",
+        "peptide_protein": "Peptide / eiwit",
+        "other": "Overig"
+      },
+      "area": {
+        "oncology": "Oncologie",
+        "metabolic": "Metabool",
+        "neurology": "Neurologie",
+        "cardiovascular": "Cardiovasculair",
+        "immunology": "Immunologie",
+        "infectious": "Infectieziekten",
+        "respiratory": "Luchtwegen",
+        "psychiatry": "Psychiatrie",
+        "hematology": "Hematologie",
+        "other": "Overig"
+      },
+      "errors": {
+        "noData": "Geen pijplijngegevens beschikbaar",
+        "failedToLoad": "Laden mislukt"
+      }
+    },
     "earningsCalendar": {
       "infoTooltip": "<strong>Earnings Calendar</strong> Aankomende en recente winstpublicaties van grote beursgenoteerde bedrijven. Toont winst per aandeel-schattingen versus werkelijke waarden, omzet en beat/miss-classificatie. Bron: financiële gegevensleveranciers.",
       "title": "Winstverwachtingskalender",

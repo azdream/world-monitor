@@ -2566,6 +2566,54 @@
         "failedToLoad": "Učitavanje nije uspjelo"
       }
     },
+    "drugPipeline": {
+      "infoTooltip": "<strong>Razvoj lijekova</strong> Klinička ispitivanja faze 3 pod pokroviteljstvom industrije, grupirana prema najranijem tromjesečju u kojem bi mogla stići regulatorna odluka, uz nedavna izvorna odobrenja FDA. Okviri odluke procjene su izvedene iz datuma primarnog završetka svakog ispitivanja, a ne objavljeni datumi. Izvori: ClinicalTrials.gov, openFDA, ChEMBL.",
+      "title": "Razvoj lijekova",
+      "tabs": {
+        "pipeline": "U razvoju",
+        "approvals": "Nedavna odobrenja"
+      },
+      "allModalities": "Sve vrste lijekova",
+      "allAreas": "Sva terapijska područja",
+      "novelOnly": "Samo novi lijekovi (sakrij proširenja indikacija)",
+      "newDrug": "NOVO",
+      "labelExpansion": "PROŠIRENJE",
+      "priorityReview": "PRIORITET",
+      "estimatedWindow": "Procj. odluka {{window}}",
+      "completedOn": "Ispitivanje završeno {{date}}",
+      "completionExpected": "Kraj ispitivanja {{date}}",
+      "earliestFrom": "NAJRANIJE {{quarter}}",
+      "showingOf": "Prikazano najbližih {{shown}} od {{total}} ispitivanja",
+      "totalTrials": "Ispitivanja: {{total}}",
+      "noMatches": "Nema stavki za ove filtre",
+      "disclaimer": "Procijenjeni okviri pretpostavljaju 4–10 mjeseci od primarnog završetka do podnošenja zahtjeva i 6–12 mjeseci ocjene. Ispitivanja mogu propasti ili kasniti, a datum odluke koji objavi sponzor uvijek ima prednost pred ovom procjenom.",
+      "approvalsNote": "Izvorna odobrenja NDA i BLA iz Drugs@FDA u posljednjih 180 dana. Cjepiva te stanične i genske terapije koje regulira CBER nisu uključeni.",
+      "modality": {
+        "small_molecule": "Mala molekula",
+        "antibody": "Protutijelo",
+        "cell_therapy": "Stanična terapija",
+        "gene_therapy": "Genska terapija",
+        "vaccine": "Cjepivo",
+        "peptide_protein": "Peptid / protein",
+        "other": "Ostalo"
+      },
+      "area": {
+        "oncology": "Onkologija",
+        "metabolic": "Metabolizam",
+        "neurology": "Neurologija",
+        "cardiovascular": "Kardiovaskularno",
+        "immunology": "Imunologija",
+        "infectious": "Zarazne bolesti",
+        "respiratory": "Dišni sustav",
+        "psychiatry": "Psihijatrija",
+        "hematology": "Hematologija",
+        "other": "Ostalo"
+      },
+      "errors": {
+        "noData": "Nema podataka o razvoju lijekova",
+        "failedToLoad": "Učitavanje nije uspjelo"
+      }
+    },
     "earningsCalendar": {
       "infoTooltip": "<strong>Kalendar zarada</strong> Nadolazeća i nedavna objavljivanja zarada za velike javne tvrtke. Prikazuje procjene dobiti po dionici u odnosu na stvarne vrijednosti, prihod i klasifikaciju prekoračenja/propusta. Izvor: pružatelji financijskih podataka.",
       "title": "Kalendar zarada",

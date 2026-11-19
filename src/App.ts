@@ -113,6 +113,7 @@ import type { NqPulsePanel } from '@/components/NqPulsePanel';
 import type { NqCatalystsPanel } from '@/components/NqCatalystsPanel';
 import type { YieldCurvePanel } from '@/components/YieldCurvePanel';
 import type { EarningsCalendarPanel } from '@/components/EarningsCalendarPanel';
+import type { DrugPipelinePanel } from '@/components/DrugPipelinePanel';
 import type { MaterialEventsPanel } from '@/components/MaterialEventsPanel';
 import type { EconomicCalendarPanel } from '@/components/EconomicCalendarPanel';
 import type { CotPositioningPanel } from '@/components/CotPositioningPanel';
@@ -930,6 +931,10 @@ export class App {
     if (shouldPrime('yield-curve')) {
       const panel = this.state.panels['yield-curve'] as YieldCurvePanel | undefined;
       if (panel) primeTask('yield-curve', () => panel.fetchData());
+    }
+    if (shouldPrime('drug-pipeline')) {
+      const panel = this.state.panels['drug-pipeline'] as DrugPipelinePanel | undefined;
+      if (panel) primeTask('drug-pipeline', () => panel.fetchData());
     }
     if (shouldPrime('earnings-calendar')) {
       const panel = this.state.panels['earnings-calendar'] as EarningsCalendarPanel | undefined;
@@ -4465,6 +4470,12 @@ export class App {
       () => (this.state.panels['yield-curve'] as YieldCurvePanel).fetchData(),
       REFRESH_INTERVALS.yieldCurve,
       () => this.isPanelNearViewport('yield-curve')
+    );
+    this.refreshScheduler.scheduleRefresh(
+      'drug-pipeline',
+      () => (this.state.panels['drug-pipeline'] as DrugPipelinePanel).fetchData(),
+      REFRESH_INTERVALS.drugPipeline,
+      () => this.isPanelNearViewport('drug-pipeline')
     );
     this.refreshScheduler.scheduleRefresh(
       'earnings-calendar',

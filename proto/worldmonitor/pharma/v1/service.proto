@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package worldmonitor.pharma.v1;
+
+import "sebuf/http/annotations.proto";
+import "worldmonitor/pharma/v1/list_drug_pipeline.proto";
+
+service PharmaService {
+  option (sebuf.http.service_config) = {base_path: "/api/pharma/v1"};
+
+  // ListDrugPipeline returns Phase 3 industry trials with an estimated regulatory decision window,
+  // plus recent FDA approvals.
+  rpc ListDrugPipeline(ListDrugPipelineRequest) returns (ListDrugPipelineResponse) {
+    option (sebuf.http.config) = {path: "/list-drug-pipeline", method: HTTP_METHOD_GET};
+  }
+}

@@ -1193,6 +1193,20 @@
       ]
     },
     {
+      "host": "api.fda.gov",
+      "provider": "api.fda.gov",
+      "kind": "structured",
+      "observed": true,
+      "license": "Provider terms for this upstream API/dataset; verify before redistribution",
+      "attribution": "Credit api.fda.gov and link to the original upstream API/dataset.",
+      "status": "terms-review",
+      "references": [
+        {
+          "path": "scripts/seed-drug-pipeline.mjs"
+        }
+      ]
+    },
+    {
       "host": "api.firecrawl.dev",
       "provider": "Firecrawl",
       "kind": "structured",

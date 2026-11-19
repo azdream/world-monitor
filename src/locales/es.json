@@ -2278,6 +2278,54 @@
       },
       "methodologyNote": "Los niveles Alert / Warning / Watch provienen de un clasificador de palabras clave editorial — véase /docs/methodology/disease-alert-level para la tabla de palabras clave y limitaciones."
     },
+    "drugPipeline": {
+      "infoTooltip": "<strong>Pipeline de Fármacos</strong> Ensayos de fase 3 patrocinados por la industria, agrupados por el primer trimestre en que podría llegar una decisión regulatoria, junto con las aprobaciones originales recientes de la FDA. Las ventanas de decisión son estimaciones derivadas de la fecha de finalización primaria de cada ensayo, no fechas anunciadas. Fuentes: ClinicalTrials.gov, openFDA, ChEMBL.",
+      "title": "Pipeline de Fármacos",
+      "tabs": {
+        "pipeline": "En desarrollo",
+        "approvals": "Aprobaciones recientes"
+      },
+      "allModalities": "Todos los tipos de fármaco",
+      "allAreas": "Todas las áreas terapéuticas",
+      "novelOnly": "Solo fármacos nuevos (ocultar ampliaciones de indicación)",
+      "newDrug": "NUEVO",
+      "labelExpansion": "AMPLIACIÓN",
+      "priorityReview": "PRIORITARIA",
+      "estimatedWindow": "Decisión est. {{window}}",
+      "completedOn": "Ensayo finalizado {{date}}",
+      "completionExpected": "Fin del ensayo {{date}}",
+      "earliestFrom": "COMO PRONTO {{quarter}}",
+      "showingOf": "Mostrando los {{shown}} ensayos más próximos de {{total}}",
+      "totalTrials": "{{total}} ensayos",
+      "noMatches": "Ninguna entrada coincide con estos filtros",
+      "disclaimer": "Las ventanas estimadas suponen de 4 a 10 meses entre la finalización primaria y la solicitud, y una revisión de 6 a 12 meses. Los ensayos pueden fracasar o retrasarse, y una fecha de decisión anunciada por el patrocinador siempre prevalece sobre esta estimación.",
+      "approvalsNote": "Aprobaciones originales de NDA y BLA de Drugs@FDA en los últimos 180 días. No se incluyen las vacunas ni las terapias celulares o génicas reguladas por el CBER.",
+      "modality": {
+        "small_molecule": "Molécula pequeña",
+        "antibody": "Anticuerpo",
+        "cell_therapy": "Terapia celular",
+        "gene_therapy": "Terapia génica",
+        "vaccine": "Vacuna",
+        "peptide_protein": "Péptido / proteína",
+        "other": "Otro"
+      },
+      "area": {
+        "oncology": "Oncología",
+        "metabolic": "Metabólico",
+        "neurology": "Neurología",
+        "cardiovascular": "Cardiovascular",
+        "immunology": "Inmunología",
+        "infectious": "Enfermedades infecciosas",
+        "respiratory": "Respiratorio",
+        "psychiatry": "Psiquiatría",
+        "hematology": "Hematología",
+        "other": "Otro"
+      },
+      "errors": {
+        "noData": "No hay datos de pipeline disponibles",
+        "failedToLoad": "Error al cargar"
+      }
+    },
     "earningsCalendar": {
       "infoTooltip": "<strong>Earnings Calendar</strong> Próximas y recientes publicaciones de ganancias de empresas públicas importantes. Muestra estimaciones versus datos reales de ganancia por acción, ingresos y clasificación de superación/no superación de expectativas. Fuente: proveedores de datos financieros.",
       "title": "Calendario de Resultados",

@@ -237,7 +237,9 @@ const EXCLUDED_FROM_MCP_PARITY = new Map([
   ["GET /api/scenario/v1/list-scenario-templates",
     "manual-mapping: handler uses inline Redis or Convex (not server/_shared/redis) — manual triage"],
 
-  // === deferred-to-future-tool (57) ===
+  // === deferred-to-future-tool (58) ===
+  ["GET /api/pharma/v1/list-drug-pipeline",
+    "deferred-to-future-tool: pure read of pharma:drug-pipeline:v1 (Phase 3 pipeline with in-memory modality/area filters, plus recent FDA approvals) — bundle into a future get_drug_pipeline tool"],
   ["GET /api/safety/v1/get-toronto-safety",
     "deferred-to-future-tool: pure-read of the seeded Toronto Police Service extracts. The two Toronto-only tools left tools/list (both names stay callable as retired tools); a public-safety tool taking a jurisdiction receives them once a second city or province is seeded."],
   ["GET /api/aviation/v1/list-aircraft-emergencies",

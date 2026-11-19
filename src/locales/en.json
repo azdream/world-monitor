@@ -2682,6 +2682,54 @@
         "failedToLoad": "Failed to load"
       }
     },
+    "drugPipeline": {
+      "infoTooltip": "<strong>Drug Pipeline</strong> Phase 3 trials by earliest estimated regulatory decision quarter, plus recent FDA approvals. Windows are estimates, not announced dates. Sources: ClinicalTrials.gov, openFDA, ChEMBL.",
+      "title": "Drug Pipeline",
+      "tabs": {
+        "pipeline": "Pipeline",
+        "approvals": "Recent approvals"
+      },
+      "allModalities": "All drug types",
+      "allAreas": "All therapeutic areas",
+      "novelOnly": "New drugs only (hide label expansions)",
+      "newDrug": "NEW",
+      "labelExpansion": "EXPANSION",
+      "priorityReview": "PRIORITY",
+      "estimatedWindow": "Est. decision {{window}}",
+      "completedOn": "Trial done {{date}}",
+      "completionExpected": "Trial ends {{date}}",
+      "earliestFrom": "EARLIEST {{quarter}}",
+      "showingOf": "Showing the soonest {{shown}} of {{total}} trials",
+      "totalTrials": "{{total}} trials",
+      "noMatches": "No entries match these filters",
+      "disclaimer": "Estimated windows assume 4–10 months from primary completion to filing and a 6–12 month review. Trials can fail or slip, and a sponsor-announced decision date always supersedes this estimate.",
+      "approvalsNote": "Original NDA and BLA approvals from Drugs@FDA over the last 180 days. Vaccines and cell or gene therapies regulated by CBER are not included.",
+      "modality": {
+        "small_molecule": "Small molecule",
+        "antibody": "Antibody",
+        "cell_therapy": "Cell therapy",
+        "gene_therapy": "Gene therapy",
+        "vaccine": "Vaccine",
+        "peptide_protein": "Peptide / protein",
+        "other": "Other"
+      },
+      "area": {
+        "oncology": "Oncology",
+        "metabolic": "Metabolic",
+        "neurology": "Neurology",
+        "cardiovascular": "Cardiovascular",
+        "immunology": "Immunology",
+        "infectious": "Infectious disease",
+        "respiratory": "Respiratory",
+        "psychiatry": "Psychiatry",
+        "hematology": "Hematology",
+        "other": "Other"
+      },
+      "errors": {
+        "noData": "No drug pipeline data",
+        "failedToLoad": "Failed to load"
+      }
+    },
     "earningsCalendar": {
       "infoTooltip": "<strong>Earnings Calendar</strong> Upcoming and recent earnings releases for major public companies. Shows earnings per share estimates vs actuals, revenue, and beat/miss classification. Source: financial data providers.",
       "title": "Earnings Calendar",

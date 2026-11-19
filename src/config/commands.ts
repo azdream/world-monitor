@@ -220,6 +220,7 @@ export const COMMANDS: Command[] = [
   { id: 'panel:nq-catalysts', keywords: ['nq catalysts', 'nasdaq earnings', 'us macro calendar', 'fomc nq', 'influence basket'], label: 'Panel: NQ Catalysts', icon: '\u{1F4C5}', category: 'panels' },
   { id: 'panel:nq-news', keywords: ['nq news', 'nasdaq futures news', 'qqq headlines', 'fed press', 'semiconductor news'], label: 'Panel: NQ News', icon: '\u{1F4F0}', category: 'panels' },
   { id: 'panel:yield-curve', keywords: ['yield curve', 'rates', 'treasury', 'ecb rates', 'bond yield', 'inversion'], label: 'Panel: Yield Curve & Rates', icon: '\u{1F4C8}', category: 'panels' },
+  { id: 'panel:drug-pipeline', keywords: ['drug pipeline', 'pharma', 'clinical trials', 'fda approvals', 'new drugs', 'biotech', 'phase 3'], label: 'Panel: Drug Pipeline', icon: '\u{1F48A}', category: 'panels' },
   { id: 'panel:earnings-calendar', keywords: ['earnings', 'earnings calendar', 'eps', 'quarterly results'], label: 'Panel: Earnings Calendar', icon: '\u{1F4C5}', category: 'panels' },
   { id: 'panel:material-events', keywords: ['sec', '8-k', 'material events', 'filings', 'disclosures'], label: 'Panel: SEC Material Events', icon: '\u{1F4C4}', category: 'panels' },
   { id: 'panel:economic-calendar', keywords: ['economic calendar', 'macro events', 'nonfarm payrolls', 'gdp release', 'fomc'], label: 'Panel: Economic Calendar', icon: '\u{1F4C6}', category: 'panels' },

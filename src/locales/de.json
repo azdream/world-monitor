@@ -2268,6 +2268,54 @@
       },
       "methodologyNote": "Alert- / Warn- / Watch-Level stammen von einem redaktionellen Keyword-Klassifikator – siehe /docs/methodology/disease-alert-level für die Keyword-Tabelle und Einschränkungen."
     },
+    "drugPipeline": {
+      "infoTooltip": "<strong>Arzneimittel-Pipeline</strong> Von der Industrie gesponserte Phase-3-Studien, gruppiert nach dem frühesten Quartal, in dem eine Zulassungsentscheidung fallen könnte, sowie aktuelle FDA-Erstzulassungen. Entscheidungsfenster sind Schätzungen auf Basis des primären Abschlussdatums jeder Studie, keine angekündigten Termine. Quellen: ClinicalTrials.gov, openFDA, ChEMBL.",
+      "title": "Arzneimittel-Pipeline",
+      "tabs": {
+        "pipeline": "In Entwicklung",
+        "approvals": "Aktuelle Zulassungen"
+      },
+      "allModalities": "Alle Wirkstofftypen",
+      "allAreas": "Alle Therapiegebiete",
+      "novelOnly": "Nur neue Wirkstoffe (Indikationserweiterungen ausblenden)",
+      "newDrug": "NEU",
+      "labelExpansion": "ERWEITERUNG",
+      "priorityReview": "PRIORITÄT",
+      "estimatedWindow": "Entscheidung ca. {{window}}",
+      "completedOn": "Studie beendet {{date}}",
+      "completionExpected": "Studienende {{date}}",
+      "earliestFrom": "FRÜHESTENS {{quarter}}",
+      "showingOf": "Die nächsten {{shown}} von {{total}} Studien",
+      "totalTrials": "{{total}} Studien",
+      "noMatches": "Keine Einträge für diese Filter",
+      "disclaimer": "Die geschätzten Zeitfenster gehen von 4–10 Monaten zwischen primärem Studienabschluss und Einreichung sowie 6–12 Monaten Prüfung aus. Studien können scheitern oder sich verzögern; ein vom Sponsor angekündigter Entscheidungstermin hat stets Vorrang vor dieser Schätzung.",
+      "approvalsNote": "Erstzulassungen (NDA und BLA) aus Drugs@FDA in den letzten 180 Tagen. Impfstoffe sowie Zell- und Gentherapien, die vom CBER reguliert werden, sind nicht enthalten.",
+      "modality": {
+        "small_molecule": "Kleines Molekül",
+        "antibody": "Antikörper",
+        "cell_therapy": "Zelltherapie",
+        "gene_therapy": "Gentherapie",
+        "vaccine": "Impfstoff",
+        "peptide_protein": "Peptid / Protein",
+        "other": "Sonstige"
+      },
+      "area": {
+        "oncology": "Onkologie",
+        "metabolic": "Stoffwechsel",
+        "neurology": "Neurologie",
+        "cardiovascular": "Herz-Kreislauf",
+        "immunology": "Immunologie",
+        "infectious": "Infektionskrankheiten",
+        "respiratory": "Atemwege",
+        "psychiatry": "Psychiatrie",
+        "hematology": "Hämatologie",
+        "other": "Sonstige"
+      },
+      "errors": {
+        "noData": "Keine Pipeline-Daten verfügbar",
+        "failedToLoad": "Fehler beim Laden"
+      }
+    },
     "earningsCalendar": {
       "infoTooltip": "<strong>Gewinnkalender</strong> Bevorstehende und letzte Gewinnergebnisse großer börsennotierter Unternehmen. Zeigt Gewinn pro Aktie-Schätzungen im Vergleich zu Ist-Werten, Umsatz und Beat/Miss-Klassifizierung. Quelle: Finanzdienstleister.",
       "title": "Quartalszahlen-Kalender",

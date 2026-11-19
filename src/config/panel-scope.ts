@@ -89,6 +89,7 @@ export const PANEL_SCOPE_BEHAVIOUR: Readonly<Record<string, PanelScopeBehaviour>
   fsi: 'global', // Financial Stress
   'yield-curve': 'global', // Yield Curve
   'earnings-calendar': 'global', // Earnings Calendar
+  'drug-pipeline': 'global', // Drug Pipeline
   'material-events': 'global', // SEC Material Events
   'economic-calendar': 'global', // Economic Calendar
   'cot-positioning': 'global', // COT Positioning

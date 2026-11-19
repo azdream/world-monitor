@@ -302,6 +302,7 @@
                     "pages": [
                       "panels/consumer-prices",
                       "panels/disease-outbreaks",
+                      "panels/drug-pipeline",
                       "panels/radiation-watch",
                       "panels/thermal-escalation",
                       "panels/airline-intel",
@@ -552,6 +553,10 @@
                   {
                     "group": "Public Health",
                     "openapi": "api/HealthService.openapi.yaml"
+                  },
+                  {
+                    "group": "Pharma",
+                    "openapi": "api/PharmaService.openapi.yaml"
                   },
                   {
                     "group": "Imagery",
@@ -903,6 +908,7 @@
                     "pages": [
                       "zh/panels/consumer-prices",
                       "zh/panels/disease-outbreaks",
+                      "zh/panels/drug-pipeline",
                       "zh/panels/radiation-watch",
                       "zh/panels/thermal-escalation",
                       "zh/panels/airline-intel",
@@ -1153,6 +1159,10 @@
                   {
                     "group": "公共卫生",
                     "openapi": "api/HealthService.openapi.yaml"
+                  },
+                  {
+                    "group": "医药",
+                    "openapi": "api/PharmaService.openapi.yaml"
                   },
                   {
                     "group": "影像",

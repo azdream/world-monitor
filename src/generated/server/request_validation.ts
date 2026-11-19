@@ -2,7 +2,7 @@
 // Source: proto/worldmonitor/**/*.proto buf.validate annotations.
 
 export const GENERATED_PROTO_VALIDATION_RULE_COUNT = 748;
-export const GENERATED_REQUEST_METHOD_COUNT = 201;
+export const GENERATED_REQUEST_METHOD_COUNT = 202;
 
 export const GENERATED_REQUEST_TYPES = {
   "analyzeStock": "worldmonitor.market.v1.AnalyzeStockRequest",
@@ -133,6 +133,7 @@ export const GENERATED_REQUEST_TYPES = {
   "listCryptoQuotes": "worldmonitor.market.v1.ListCryptoQuotesRequest",
   "listCyberThreats": "worldmonitor.cyber.v1.ListCyberThreatsRequest",
   "listDefensePatents": "worldmonitor.military.v1.ListDefensePatentsRequest",
+  "listDrugPipeline": "worldmonitor.pharma.v1.ListDrugPipelineRequest",
   "listEarningsCalendar": "worldmonitor.market.v1.ListEarningsCalendarRequest",
   "listEarthquakes": "worldmonitor.seismology.v1.ListEarthquakesRequest",
   "listEnergyDisruptions": "worldmonitor.supply_chain.v1.ListEnergyDisruptionsRequest",
@@ -2601,6 +2602,18 @@ export const GENERATED_MESSAGE_RULES = {
   "worldmonitor.orbital.v1.GetWatchedSiteImageryRequest": {
     "fields": {
       "siteId": {
+        "kind": "string",
+        "stringMaxBytes": 65536
+      }
+    }
+  },
+  "worldmonitor.pharma.v1.ListDrugPipelineRequest": {
+    "fields": {
+      "modality": {
+        "kind": "string",
+        "stringMaxBytes": 65536
+      },
+      "therapeuticArea": {
         "kind": "string",
         "stringMaxBytes": 65536
       }

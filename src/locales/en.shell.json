@@ -601,6 +601,10 @@
     "displacement": {
       "infoTooltip": "<strong>Displacement</strong> Refugees, asylum seekers and people displaced within their country. Origin and host views show where people flee from and to. Crisis badges mark over one million displaced; high marks over 500,000. Annual UN Refugee Agency data, CC BY 4.0 license."
     },
+    "drugPipeline": {
+      "infoTooltip": "<strong>Drug Pipeline</strong> Phase 3 trials by earliest estimated regulatory decision quarter, plus recent FDA approvals. Windows are estimates, not announced dates. Sources: ClinicalTrials.gov, openFDA, ChEMBL.",
+      "title": "Drug Pipeline"
+    },
     "earningsCalendar": {
       "infoTooltip": "<strong>Earnings Calendar</strong> Upcoming and recent earnings releases for major public companies. Shows earnings per share estimates vs actuals, revenue, and beat/miss classification. Source: financial data providers.",
       "title": "Earnings Calendar"

@@ -2288,6 +2288,54 @@
       },
       "methodologyNote": "Poziomy Alert / Ostrzeżenie / Obserwacja pochodzą z edytorskiego klasyfikatora słów kluczowych — zobacz /docs/methodology/disease-alert-level w celu uzyskania tabeli słów kluczowych i ograniczeń."
     },
+    "drugPipeline": {
+      "infoTooltip": "<strong>Pipeline Leków</strong> Sponsorowane przez przemysł badania fazy 3 pogrupowane według najwcześniejszego kwartału, w którym może zapaść decyzja regulacyjna, oraz najnowsze pierwotne zatwierdzenia FDA. Okna decyzji to szacunki wyliczone z daty zakończenia głównej części każdego badania, a nie ogłoszone terminy. Źródła: ClinicalTrials.gov, openFDA, ChEMBL.",
+      "title": "Pipeline Leków",
+      "tabs": {
+        "pipeline": "W rozwoju",
+        "approvals": "Ostatnie zatwierdzenia"
+      },
+      "allModalities": "Wszystkie typy leków",
+      "allAreas": "Wszystkie obszary terapeutyczne",
+      "novelOnly": "Tylko nowe leki (ukryj rozszerzenia wskazań)",
+      "newDrug": "NOWY",
+      "labelExpansion": "ROZSZERZENIE",
+      "priorityReview": "PRIORYTET",
+      "estimatedWindow": "Szac. decyzja {{window}}",
+      "completedOn": "Badanie zakończone {{date}}",
+      "completionExpected": "Koniec badania {{date}}",
+      "earliestFrom": "NAJWCZEŚNIEJ {{quarter}}",
+      "showingOf": "Najbliższe {{shown}} z {{total}} badań",
+      "totalTrials": "Badania: {{total}}",
+      "noMatches": "Brak pozycji pasujących do filtrów",
+      "disclaimer": "Szacowane okna zakładają 4–10 miesięcy od zakończenia głównej części badania do złożenia wniosku oraz 6–12 miesięcy oceny. Badania mogą się nie powieść lub opóźnić, a termin decyzji ogłoszony przez sponsora zawsze ma pierwszeństwo przed tym szacunkiem.",
+      "approvalsNote": "Pierwotne zatwierdzenia NDA i BLA z Drugs@FDA z ostatnich 180 dni. Nie obejmuje szczepionek ani terapii komórkowych i genowych nadzorowanych przez CBER.",
+      "modality": {
+        "small_molecule": "Mała cząsteczka",
+        "antibody": "Przeciwciało",
+        "cell_therapy": "Terapia komórkowa",
+        "gene_therapy": "Terapia genowa",
+        "vaccine": "Szczepionka",
+        "peptide_protein": "Peptyd / białko",
+        "other": "Inne"
+      },
+      "area": {
+        "oncology": "Onkologia",
+        "metabolic": "Metabolizm",
+        "neurology": "Neurologia",
+        "cardiovascular": "Układ krążenia",
+        "immunology": "Immunologia",
+        "infectious": "Choroby zakaźne",
+        "respiratory": "Układ oddechowy",
+        "psychiatry": "Psychiatria",
+        "hematology": "Hematologia",
+        "other": "Inne"
+      },
+      "errors": {
+        "noData": "Brak danych o pipeline leków",
+        "failedToLoad": "Nie udało się załadować"
+      }
+    },
     "earningsCalendar": {
       "infoTooltip": "<strong>Earnings Calendar</strong> Nadchodzące i niedawne publikacje wyników finansowych dla głównych spółek publicznych. Wyświetla szacunki zysków na akcję versus rzeczywistość, przychody i klasyfikację beat/miss. Źródło: dostawcy danych finansowych.",
       "title": "Kalendarz Wyników",

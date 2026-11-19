@@ -108,6 +108,7 @@ const LAZY_HTML_PRELOAD_RE = new RegExp(
 const PANEL_CLUSTER: Record<string, PanelChunkName> = {
   // Markets / equities / crypto positioning
   AAIISentiment: 'panels-markets', CotPositioning: 'panels-markets',
+  DrugPipeline: 'panels-markets',
   ETFFlows: 'panels-markets', EarningsCalendar: 'panels-markets', MaterialEvents: 'panels-markets',
   EconomicCalendar: 'panels-markets', FearGreed: 'panels-markets',
   Fx: 'panels-markets',
@@ -598,6 +599,7 @@ function sebufApiPlugin(): Plugin {
       leadsServerMod, leadsHandlerMod,
       scenarioServerMod, scenarioHandlerMod,
       shippingV2ServerMod, shippingV2HandlerMod,
+      pharmaServerMod, pharmaHandlerMod,
       batchServerMod, batchHandlerMod,
       consumerPricesServerMod, consumerPricesHandlerMod,
       feedbackServerMod, feedbackHandlerMod,
@@ -667,6 +669,8 @@ function sebufApiPlugin(): Plugin {
         import('./server/worldmonitor/scenario/v1/handler'),
         import('./src/generated/server/worldmonitor/shipping/v2/service_server'),
         import('./server/worldmonitor/shipping/v2/handler'),
+        import('./src/generated/server/worldmonitor/pharma/v1/service_server'),
+        import('./server/worldmonitor/pharma/v1/handler'),
         import('./src/generated/server/worldmonitor/batch/v1/service_server'),
         import('./server/worldmonitor/batch/v1/handler'),
         import('./src/generated/server/worldmonitor/consumer_prices/v1/service_server'),
@@ -726,6 +730,7 @@ function sebufApiPlugin(): Plugin {
       ...leadsServerMod.createLeadsServiceRoutes(leadsHandlerMod.leadsHandler, serverOptions),
       ...scenarioServerMod.createScenarioServiceRoutes(scenarioHandlerMod.scenarioHandler, serverOptions),
       ...shippingV2ServerMod.createShippingV2ServiceRoutes(shippingV2HandlerMod.shippingV2Handler, serverOptions),
+      ...pharmaServerMod.createPharmaServiceRoutes(pharmaHandlerMod.pharmaHandler, serverOptions),
       ...batchServerMod.createBatchServiceRoutes(batchHandlerMod.batchHandler, serverOptions),
       ...consumerPricesServerMod.createConsumerPricesServiceRoutes(consumerPricesHandlerMod.consumerPricesHandler, serverOptions),
       ...feedbackServerMod.createFeedbackServiceRoutes(feedbackHandlerMod.feedbackHandler, serverOptions),

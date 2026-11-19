@@ -6,6 +6,7 @@ await runBundle('health', [
   { label: 'Air-Quality', script: 'seed-health-air-quality.mjs', seedMetaKey: 'health:air-quality', intervalMs: HOUR, timeoutMs: 600_000 },
   { label: 'Disease-Outbreaks', script: 'seed-disease-outbreaks.mjs', seedMetaKey: 'health:disease-outbreaks', canonicalKey: 'health:disease-outbreaks:v1', intervalMs: DAY, timeoutMs: 300_000 },
   { label: 'VPD-Tracker', script: 'seed-vpd-tracker.mjs', seedMetaKey: 'health:vpd-tracker', canonicalKey: 'health:vpd-tracker:realtime:v1', completionMetaKey: 'seed-completion:health:vpd-tracker', intervalMs: DAY, timeoutMs: 300_000 },
+  { label: 'Drug-Pipeline', script: 'seed-drug-pipeline.mjs', seedMetaKey: 'pharma:drug-pipeline', canonicalKey: 'pharma:drug-pipeline:v1', intervalMs: DAY, timeoutMs: 300_000 },
   { label: 'Displacement', script: 'seed-displacement-summary.mjs', seedMetaKey: 'displacement:summary', intervalMs: DAY, timeoutMs: 300_000 },
   { label: 'Cross-Border-Arrivals', script: 'seed-cross-border-arrivals.mjs', seedMetaKey: 'displacement:cross-border', canonicalKey: 'displacement:cross-border:v1', completionMetaKey: 'seed-completion:displacement:cross-border', intervalMs: DAY, timeoutMs: 300_000 },
   { label: 'Border-UK', script: 'seed-border-uk.mjs', seedMetaKey: 'displacement:border-uk', canonicalKey: 'displacement:border-uk:v1', completionMetaKey: 'seed-completion:displacement:border-uk', intervalMs: 6 * HOUR, timeoutMs: 180_000 },

@@ -1,0 +1,59 @@
+---
+title: "Drug Pipeline"
+description: "Late-stage drug trials grouped by estimated regulatory decision window and filterable by drug type, plus recent original FDA approvals."
+---
+
+The **Drug Pipeline** panel answers one question: which new drugs could reach a regulatory decision, and roughly when. It lists industry-sponsored Phase 3 trials by the earliest quarter a decision could land, and separately lists recent original FDA approvals.
+
+## What the panel shows
+
+**Pipeline tab** — one row per Phase 3 (or Phase 2/3) trial:
+
+- **Candidate** — the lead investigational drug in the trial.
+- **Drug type badge** — small molecule, antibody, ADC, cell therapy, gene therapy, RNA, vaccine, peptide / protein, or other.
+- **NEW / EXPANSION badge** — `NEW` when the candidate is not yet an approved drug; `EXPANSION` when the trial tests an already-approved drug in a new use.
+- **Estimated decision window** and the trial's primary completion date.
+
+Rows are grouped by the earliest quarter of the estimated window. Two dropdowns filter by drug type and therapeutic area (each option shows its count), and a checkbox hides label expansions. Each row links to the trial on ClinicalTrials.gov.
+
+**Recent approvals tab** — original NDA and BLA approvals from the last 180 days, with drug type, a `NEW` badge for new molecular entities, and a `PRIORITY` badge for priority review.
+
+Panel id is `drug-pipeline`; canonical component is `src/components/DrugPipelinePanel.ts`.
+
+## How the decision window is estimated
+
+The window is a heuristic, not an announced date:
+
+- **Earliest** = primary completion + 10 months (4 months to file, 6-month priority review).
+- **Latest** = primary completion + 22 months (10 months to file, 12-month standard review including the filing period).
+
+Regulators do not publish decision goal dates, and sponsors disclose them only in press releases and filings, which this panel does not ingest. A sponsor-announced date always supersedes the estimate. Trials can also fail, be delayed, or never lead to a filing.
+
+## How you reach it
+
+- **Cmd+K**: type *drug pipeline*, *pharma*, or *clinical trials*.
+- **Availability by variant**: enabled by default in the **finance** variant; registered but off by default in the **full** variant.
+
+## Data sources
+
+A single RPC backs both tabs:
+
+- `GET /api/pharma/v1/list-drug-pipeline` — accepts `modality`, `therapeutic_area`, `novel_only`, and `limit` (default 200, max 500). The response also carries the recent approvals, which the trial filters do not affect.
+
+The seeder (`scripts/seed-drug-pipeline.mjs`) combines the public sources below, none of which requires registration:
+
+- **ClinicalTrials.gov API v2** — industry-led interventional Phase 3 trials whose primary completion date falls between 12 months ago and 30 months ahead. This is the only hard dependency.
+- **ChEMBL** — molecule type (drug type) and approval status for name matching. If ChEMBL is unavailable, drug type falls back to name stems and the registry's intervention type.
+- **openFDA `drugsfda`** — original NDA/BLA approvals. `OPENFDA_API_KEY` is optional and only raises the daily request quota. If openFDA is unavailable, the approvals tab reports no data rather than an empty list.
+
+Results are written to `pharma:drug-pipeline:v1` in Redis with a 72-hour TTL. The published pipeline is capped at 1,500 trials, soonest first, with a fifth of the cap reserved for label expansions.
+
+## Known limits
+
+- **CBER products are missing from approvals.** Drugs@FDA covers CDER only, so vaccines and cell or gene therapies do not appear in the approvals tab. They do appear in the pipeline tab.
+- **Drug type is partly inferred.** Candidates with only a company code name and no ChEMBL entry are typed from the registry's `DRUG` / `BIOLOGICAL` / `GENETIC` label, which cannot tell an antibody from another biologic.
+- **US decision timing only.** The review-clock assumptions are FDA's; other regulators differ.
+
+## Refresh cadence
+
+The seeder runs **daily** in the health seed bundle and writes `seed-meta:pharma:drug-pipeline` on every publish. The key is not yet registered as an `/api/health` probe: that registration follows once the seeder's first production run is confirmed.

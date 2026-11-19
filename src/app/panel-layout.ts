@@ -3902,6 +3902,7 @@ export class PanelLayoutManager implements AppModule {
     this.lazyDefaultPanel('nq-catalysts', () => import('@/components/NqCatalystsPanel'), 'NqCatalystsPanel');
     this.lazyDefaultPanel('yield-curve', () => import('@/components/YieldCurvePanel'), 'YieldCurvePanel');
     this.lazyDefaultPanel('earnings-calendar', () => import('@/components/EarningsCalendarPanel'), 'EarningsCalendarPanel');
+    this.lazyDefaultPanel('drug-pipeline', () => import('@/components/DrugPipelinePanel'), 'DrugPipelinePanel');
     this.lazyDefaultPanel('material-events', () => import('@/components/MaterialEventsPanel'), 'MaterialEventsPanel');
     this.lazyDefaultPanel('economic-calendar', () => import('@/components/EconomicCalendarPanel'), 'EconomicCalendarPanel');
     this.lazyDefaultPanel('cot-positioning', () => import('@/components/CotPositioningPanel'), 'CotPositioningPanel');
