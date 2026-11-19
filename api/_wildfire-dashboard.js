@@ -7,11 +7,12 @@ export const WILDFIRE_DASHBOARD_DETECTION_LIMIT = 500;
 // letting the deliberately-short 2h TTL expire the key.
 //
 // Sized from measured bytes, not guessed: a FIRMS-shaped detection serializes to ~270B, and
-// the widest one MONITORED_REGIONS can emit (180E/82N coordinates, 'Saudi Arabia',
-// FIRE_CONFIDENCE_UNSPECIFIED) to ~288B. Tagging every row with source/kind/emergency and
-// appending wider CWFIS agency rows eats that headroom: 15,000 tagged widest FIRMS is
-// 4.786MB, and the 2026-07-30 peak mix (~14,416 tagged FIRMS + 584 CWFIS) was measured at
-// ~5.11MB — over the atomicPublish hard cap. Count-ranking is therefore only the first cut;
+// the widest one MONITORED_REGIONS can emit (180E/82N coordinates, the longest country
+// label firms-region-borders can name, FIRE_CONFIDENCE_UNSPECIFIED) to ~298B. Tagging every row
+// with source/kind/emergency and appending wider CWFIS agency rows eats that headroom: 15,000
+// tagged widest FIRMS is ~4.93MB (4.786MB when the longest label was 'Saudi Arabia'), and
+// the 2026-07-30 peak mix (~14,416 tagged FIRMS + 584 CWFIS) was measured at ~5.11MB — over
+// the atomicPublish hard cap. Count-ranking is therefore only the first cut;
 // compactWildfireDashboardPayload also trims the ranked tail until the caller-measured
 // envelope is under maxBytes. tests/wildfire-payload-cap.test.mts pins a tagged+CWFIS
 // fixture that would have been 5.11MB, so widening FireDetection or dropping the byte trim

@@ -1,4 +1,8 @@
 import { CHROME_UA, sleep } from '../_seed-utils.mjs';
+import { firmsCountryAt } from '../shared/firms-region-borders.mjs';
+import { MONITORED_REGION_COUNTRIES, MONITORED_REGIONS } from './firms-monitored-regions.mjs';
+
+export { MONITORED_REGIONS };
 
 export const FIRMS_API_BASE_URL = 'https://firms.modaps.eosdis.nasa.gov';
 
@@ -8,17 +12,22 @@ export const FIRMS_SOURCES = Object.freeze([
   'VIIRS_NOAA21_NRT',
 ]);
 
-export const MONITORED_REGIONS = Object.freeze({
-  Ukraine: '22,44,40,53',
-  Russia: '20,50,180,82',
-  Iran: '44,25,63,40',
-  'Israel/Gaza': '34,29,36,34',
-  Syria: '35,32,42,37',
-  Taiwan: '119,21,123,26',
-  'North Korea': '124,37,131,43',
-  'Saudi Arabia': '34,16,56,32',
-  Turkey: '26,36,45,42',
-});
+const REGION_BY_COUNTRY = new Map(Object.entries(MONITORED_REGION_COUNTRIES)
+  .flatMap(([region, codes]) => codes.map((code) => [code, region])));
+
+/**
+ * The label of a FIRMS detection: the monitored region's name when the point
+ * is in that region's country (Iran, Israel/Gaza, ...), otherwise the name of
+ * the country the point is actually in. The boxes overlap, so the box a row was
+ * fetched through says nothing about its country: the Iran box returns Basra
+ * flares and the North Korea box returns Liaoning. Only a point the border file
+ * cannot place (beyond 200 nautical miles offshore) keeps the queried box name.
+ */
+export function firmsDetectionRegion(latitude, longitude, queriedRegion) {
+  const country = firmsCountryAt(latitude, longitude);
+  if (!country) return queriedRegion;
+  return REGION_BY_COUNTRY.get(country.code) ?? country.name;
+}
 
 const REQUEST_PACE_MS = 6_000;
 const OBSERVATION_WINDOW_MS = 24 * 60 * 60 * 1_000;
@@ -190,18 +199,17 @@ export async function fetchAllFirmsRegions(apiKey, {
           seen.add(id);
           const brightness = parseFloat(row.bright_ti4 ?? '0') || 0;
           const frp = parseFloat(row.frp ?? '0') || 0;
+          const latitude = parseFloat(row.latitude ?? '0') || 0;
+          const longitude = parseFloat(row.longitude ?? '0') || 0;
           fireDetections.push({
             id,
-            location: {
-              latitude: parseFloat(row.latitude ?? '0') || 0,
-              longitude: parseFloat(row.longitude ?? '0') || 0,
-            },
+            location: { latitude, longitude },
             brightness,
             frp,
             confidence: mapConfidence(row.confidence || ''),
             satellite: row.satellite || '',
             detectedAt,
-            region: regionName,
+            region: firmsDetectionRegion(latitude, longitude, regionName),
             dayNight: row.daynight || '',
             possibleExplosion: frp > 80 && brightness > 380,
             source: 'firms',

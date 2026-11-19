@@ -185,3 +185,15 @@ export function ciiCountryAt(lat, lon) {
   }
   return bestCode;
 }
+
+// The decoding and geometry primitives, shared with
+// scripts/shared/firms-region-borders.mjs, which reads a border file in the
+// same encoding. Exporting them changes nothing about the CII lookups above.
+export {
+  decodeArcs as decodeBorderArcs,
+  buildPolygon as buildBorderPolygon,
+  inPolygon as borderPolygonContains,
+  ringDistanceSq as borderRingDistanceSq,
+  KM_PER_DEG_LAT,
+  KM_PER_DEG_LON_EQUATOR,
+};

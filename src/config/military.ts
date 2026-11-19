@@ -9,7 +9,12 @@ export interface CallsignPattern {
   operator: MilitaryOperator;
   aircraftType?: MilitaryAircraftType;
   description?: string;
+  /** The callsign only counts on an ICAO hex inside this range. */
+  requiresHexRange?: { start: string; end: string };
 }
+
+/** US DoD: civil N-numbers end at ADF7C7, everything above is military. */
+export const US_MILITARY_HEX_RANGE = Object.freeze({ start: 'ADF7C8', end: 'AFFFFF' });
 
 // US Military callsign patterns
 export const US_MILITARY_CALLSIGNS: CallsignPattern[] = [
@@ -18,7 +23,9 @@ export const US_MILITARY_CALLSIGNS: CallsignPattern[] = [
   { pattern: '^REACH', operator: 'usaf', aircraftType: 'transport', description: 'REACH - AMC transport' },
   { pattern: '^DUKE', operator: 'usaf', aircraftType: 'transport', description: 'DUKE - VIP transport' },
   { pattern: '^SAM', operator: 'usaf', aircraftType: 'vip', description: 'Special Air Mission' },
-  { pattern: '^AF[12]', operator: 'usaf', aircraftType: 'vip', description: 'Air Force One/Two' },
+  // Exactly AF1 / AF2 on a US DoD hex: AF plus digits is otherwise Air France's
+  // IATA prefix (AF23M on French hex 394A0A, 2026-11-19 audit).
+  { pattern: '^AF[12]$', operator: 'usaf', aircraftType: 'vip', description: 'Air Force One/Two', requiresHexRange: US_MILITARY_HEX_RANGE },
   { pattern: '^EXEC', operator: 'usaf', aircraftType: 'vip', description: 'Executive transport' },
   { pattern: '^GOLD', operator: 'usaf', aircraftType: 'special_ops', description: 'Special operations' },
   { pattern: '^KING', operator: 'usaf', aircraftType: 'tanker', description: 'KC-135/KC-46 tanker' },
@@ -349,7 +356,7 @@ export const KNOWN_MILITARY_AIRCRAFT: Record<string, {
 
 export const MILITARY_HEX_RANGES: { start: string; end: string; operator: MilitaryOperator; country: string }[] = [
   // United States DoD — civil N-numbers end at ADF7C7; everything above is military
-  { start: 'ADF7C8', end: 'AFFFFF', operator: 'usaf', country: 'USA' },
+  { ...US_MILITARY_HEX_RANGE, operator: 'usaf', country: 'USA' },
 
   // UK Military (small block at start + main RAF block)
   { start: '400000', end: '40003F', operator: 'raf', country: 'UK' },
@@ -366,8 +373,10 @@ export const MILITARY_HEX_RANGES: { start: string; end: string; operator: Milita
   // Israel Military (confirmed IAF sub-range within 738000-73FFFF)
   { start: '738A00', end: '738BFF', operator: 'iaf', country: 'Israel' },
 
-  // NATO AWACS (Luxembourg registration but NATO operated)
-  { start: '4D0000', end: '4D03FF', operator: 'nato', country: 'NATO' },
+  // NATO E-3A Component AWACS only (LX-N90442 = 4D03C0 ... LX-N90459 = 4D03D0,
+  // hexdb.io). The rest of Luxembourg's 4D0000 block is civil: Luxair LX-LGS =
+  // 4D00C3, LX-LQJ = 4D00DA, plus Jetfly, Flying Group and Global Jet bizjets.
+  { start: '4D03C0', end: '4D03D0', operator: 'nato', country: 'NATO' },
 
   // Italy Military (top of 300000-33FFFF block)
   { start: '33FF00', end: '33FFFF', operator: 'other', country: 'Italy' },
@@ -779,11 +788,19 @@ export function getUSNIRegionApproxCoords(regionText: string): { lat: number; lo
   return { lat, lon };
 }
 
+function callsignPatternMatches(pattern: CallsignPattern, callsign: string, hexCode: string): boolean {
+  if (!new RegExp(pattern.pattern, 'i').test(callsign)) return false;
+  const range = pattern.requiresHexRange;
+  return !range || (/^[0-9A-F]{6}$/.test(hexCode) && hexCode >= range.start && hexCode <= range.end);
+}
+
 /**
- * Helper function to identify aircraft by callsign
+ * Helper function to identify aircraft by callsign. Pass the ICAO hex so
+ * patterns that only count on a given hex range (AF1/AF2) can be checked.
  */
-export function identifyByCallsign(callsign: string, originCountry?: string): CallsignPattern | undefined {
+export function identifyByCallsign(callsign: string, originCountry?: string, hexCode = ''): CallsignPattern | undefined {
   const normalized = callsign.toUpperCase().trim();
+  const hex = hexCode.toUpperCase();
   const origin = originCountry?.toLowerCase().trim();
 
   // Prefer country-specific operators to disambiguate (e.g. NAVY → USN vs RN)
@@ -794,12 +811,12 @@ export function identifyByCallsign(callsign: string, originCountry?: string): Ca
   if (preferred.length > 0) {
     for (const pattern of ALL_MILITARY_CALLSIGNS) {
       if (!preferred.includes(pattern.operator)) continue;
-      if (new RegExp(pattern.pattern, 'i').test(normalized)) return pattern;
+      if (callsignPatternMatches(pattern, normalized, hex)) return pattern;
     }
   }
 
   for (const pattern of ALL_MILITARY_CALLSIGNS) {
-    if (new RegExp(pattern.pattern, 'i').test(normalized)) return pattern;
+    if (callsignPatternMatches(pattern, normalized, hex)) return pattern;
   }
 
   return undefined;

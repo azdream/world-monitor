@@ -283,13 +283,17 @@ class SignalAggregator {
     this.clearSignalType('satellite_fire');
     
     for (const fire of fires) {
-      const code = getCountryAtCoordinates(fire.lat, fire.lon)?.code || normalizeCountryCode(fire.region) || 'XX';
+      // The country comes from the point. `region` is only the fallback for a
+      // point the map's borders cannot place; naming the signal after it while
+      // the code came from the point paired an Iraq code with an "Iran" label.
+      const hit = getCountryAtCoordinates(fire.lat, fire.lon);
+      const code = hit?.code || normalizeCountryCode(fire.region) || 'XX';
       const severity = fire.brightness > 360 ? 'high' : fire.brightness > 320 ? 'medium' : 'low';
-      
+
       this.signals.push({
         type: 'satellite_fire',
         country: code,
-        countryName: fire.region,
+        countryName: hit ? getCountryName(hit.code) : fire.region,
         lat: fire.lat,
         lon: fire.lon,
         severity,

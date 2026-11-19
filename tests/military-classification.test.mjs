@@ -1,8 +1,9 @@
-import { describe, it } from 'node:test';
+import { before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { build } from 'esbuild';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
@@ -178,6 +179,8 @@ describe('Military hex range classifier (client-side)', () => {
       '43CFFF', // RAF end
       '3AA000', // French military start
       '3F4000', // German military start
+      '4D03C0', // NATO E-3A LX-N90442
+      '4D03D0', // NATO E-3A LX-N90459
     ];
     for (const hex of military) {
       it(`marks ${hex} as military`, () => {
@@ -207,6 +210,9 @@ describe('Military hex range classifier (client-side)', () => {
       'C00000', // Canadian civilian (Air Canada)
       'C10000', // Canadian civilian
       '7C0000', // Australian civilian (Qantas)
+      '4D00C3', // Luxair LX-LGS — was labelled NATO before the 2026-11-19 audit
+      '4D00DA', // Luxair LX-LQJ
+      '4D0000', // Luxembourg civil block start
     ];
     for (const hex of civilian) {
       it(`does NOT mark ${hex} as military`, () => {
@@ -234,6 +240,19 @@ describe('Military hex range classifier (client-side)', () => {
     it('Canada military starts at C20000 (civilian below)', () => {
       assert.ok(!isKnownMilitaryHex('C1FFFF'), 'C1FFFF should be civilian');
       assert.ok(isKnownMilitaryHex('C20000'), 'C20000 should be military');
+    });
+
+    it('NATO is only the E-3A block 4D03C0-4D03D0 (Luxembourg civil around it)', () => {
+      assert.ok(!isKnownMilitaryHex('4D03BF'), '4D03BF should be civilian');
+      assert.ok(isKnownMilitaryHex('4D03C0'), '4D03C0 should be NATO');
+      assert.ok(isKnownMilitaryHex('4D03D0'), '4D03D0 should be NATO');
+      assert.ok(!isKnownMilitaryHex('4D03D1'), '4D03D1 should be civilian');
+    });
+
+    it('the client and the seeder agree on the NATO block', () => {
+      const nato = /\{\s*start:\s*'([0-9A-F]{6})',\s*end:\s*'([0-9A-F]{6})',\s*operator:\s*'nato'/;
+      assert.deepEqual(clientSrc.match(nato)?.slice(1), ['4D03C0', '4D03D0']);
+      assert.deepEqual(seederSrc.match(nato)?.slice(1), ['4D03C0', '4D03D0']);
     });
   });
 
@@ -282,5 +301,36 @@ describe('Military hex range classifier (client-side)', () => {
     assert.deepEqual(Object.keys(clientRegistry).sort(), ['7A4262', '7A4403', '7A444F', '7A446F']);
     assert.deepEqual(seederRegistry, clientRegistry,
       'client and seeder exact matches must agree on operator, country, and aircraft type');
+  });
+});
+
+describe('Client military classifier behaviour (2026-11-19 production audit)', () => {
+  let client;
+  before(async () => {
+    // src/config/military.ts reads import.meta.env at load, so bundle it as the app does.
+    const result = await build({
+      entryPoints: [join(root, 'src/config/military.ts')],
+      bundle: true,
+      define: { 'import.meta.env': '{"DEV":false}' },
+      format: 'esm',
+      logLevel: 'silent',
+      platform: 'node',
+      write: false,
+    });
+    client = await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString('base64')}`);
+  });
+
+  it('does not classify Luxembourg civil hexes as NATO', () => {
+    assert.equal(client.isKnownMilitaryHex('4D00C3'), undefined);
+    assert.equal(client.isKnownMilitaryHex('4D03C8')?.operator, 'nato');
+  });
+
+  it('reads AF1/AF2 as Air Force One/Two only on a US DoD hex', () => {
+    assert.equal(client.identifyByCallsign('AF23M', 'France', '394A0A'), undefined, 'Air France AF23M');
+    assert.equal(client.identifyByCallsign('AF1', 'France', '394A0A'), undefined, 'AF1 on a French hex');
+    assert.equal(client.identifyByCallsign('AF1234', 'United States', 'ADFDF8'), undefined, 'AF plus a flight number');
+    const airForceOne = client.identifyByCallsign('AF1', 'United States', 'ADFDF8');
+    assert.equal(airForceOne?.operator, 'usaf');
+    assert.equal(airForceOne?.aircraftType, 'vip');
   });
 });
