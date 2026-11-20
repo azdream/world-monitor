@@ -9,6 +9,7 @@ import {
 import {
   fetchAllFirmsRegions,
   fetchFirmsRegionSource,
+  firmsDetectionRegion,
   FIRMS_API_BASE_URL,
   FIRMS_SOURCES,
   MONITORED_REGIONS,
@@ -351,7 +352,9 @@ describe('NASA FIRMS Area API sequence', () => {
       confidence: 'FIRE_CONFIDENCE_HIGH',
       satellite: 'N',
       detectedAt: Date.parse('2026-09-04T04:25:00Z'),
-      region: 'Ukraine',
+      // The fake returns this row for the first (Ukraine) query, but 34.1N 36.2E is
+      // the Bekaa Valley: the label comes from the point, not the box it came through.
+      region: 'Lebanon',
       dayNight: 'D',
       possibleExplosion: true,
       source: 'firms',
@@ -393,6 +396,65 @@ describe('NASA FIRMS Area API sequence', () => {
       /VIIRS_SNPP_NRT\/Ukraine failed \(primary HTTP 500, primary retry HTTP 500\)/,
     );
     assert.doesNotMatch(messages.error[0], /test-map-key/);
+  });
+});
+
+describe('FIRMS detection region labels (2026-11-19 production audit)', () => {
+  beforeEach((t) => t.mock.method(Date, 'now', () => Date.parse('2026-09-04T12:00:00Z')));
+  // The monitored boxes overlap. Labelling each row with the box it was fetched
+  // through put Basra flares under "Iran" (112 of 450 dashboard fires), Saudi Gulf
+  // coast fires under "Iran", and every "North Korea" fire in Liaoning, China.
+  const cases = [
+    { place: 'Basra oil fields, Iraq', lat: 30.5, lon: 47.8, box: 'Iran', expected: 'Iraq' },
+    { place: 'Jubail, Saudi Arabia', lat: 27.0, lon: 49.6, box: 'Iran', expected: 'Saudi Arabia' },
+    { place: 'Burgan field, Kuwait', lat: 28.95, lon: 47.95, box: 'Iran', expected: 'Kuwait' },
+    { place: 'Dandong, Liaoning, China', lat: 40.13, lon: 124.39, box: 'North Korea', expected: 'China' },
+    { place: 'Kirkuk, Iraq', lat: 35.47, lon: 44.39, box: 'Turkey', expected: 'Iraq' },
+    { place: 'Tehran, Iran', lat: 35.7, lon: 51.4, box: 'Iran', expected: 'Iran' },
+    { place: 'Pyongyang, North Korea', lat: 39.0, lon: 125.75, box: 'North Korea', expected: 'North Korea' },
+    { place: 'Gaza City', lat: 31.5, lon: 34.45, box: 'Israel/Gaza', expected: 'Israel/Gaza' },
+    { place: 'Simferopol, Crimea', lat: 44.95, lon: 34.1, box: 'Russia', expected: 'Ukraine' },
+    { place: 'Safaniya offshore field, Saudi Arabia', lat: 28.2, lon: 48.85, box: 'Iran', expected: 'Saudi Arabia' },
+  ];
+  for (const { place, lat, lon, box, expected } of cases) {
+    it(`labels ${place} (fetched through the ${box} box) as ${expected}`, () => {
+      assert.equal(firmsDetectionRegion(lat, lon, box), expected);
+    });
+  }
+
+  it('keeps the queried box name only for a point no border can place', () => {
+    assert.equal(firmsDetectionRegion(85, 100, 'Russia'), 'Russia');
+  });
+
+  it('labels rows by their coordinates whichever overlapping box returns them first', async () => {
+    const rows = [
+      '30.5,47.8,2026-09-04,0425,330.0,12.0,n,N,N',
+      '27.0,49.6,2026-09-04,0426,331.0,13.0,n,N,N',
+      '40.13,124.39,2026-09-04,0427,332.0,14.0,n,N,N',
+      '35.7,51.4,2026-09-04,0428,333.0,15.0,n,N,N',
+    ];
+    const iranBox = `/${FIRMS_SOURCES[0]}/${MONITORED_REGIONS.Iran}/`;
+    const northKoreaBox = `/${FIRMS_SOURCES[0]}/${MONITORED_REGIONS['North Korea']}/`;
+    const result = await fetchAllFirmsRegions('test-map-key', {
+      fetchFn: async (url) => {
+        const path = new URL(url).pathname;
+        if (path.includes(iranBox)) return response(200, `${EMPTY_CSV}${rows[0]}\n${rows[1]}\n${rows[3]}\n`);
+        if (path.includes(northKoreaBox)) return response(200, `${EMPTY_CSV}${rows[2]}\n`);
+        return response(200);
+      },
+      sleepFn: async () => {},
+      logger: captureLogger().logger,
+    });
+
+    assert.deepEqual(
+      Object.fromEntries(result.fireDetections.map((detection) => [detection.id, detection.region])),
+      {
+        '30.5-47.8-2026-09-04-0425': 'Iraq',
+        '27.0-49.6-2026-09-04-0426': 'Saudi Arabia',
+        '40.13-124.39-2026-09-04-0427': 'China',
+        '35.7-51.4-2026-09-04-0428': 'Iran',
+      },
+    );
   });
 });
 

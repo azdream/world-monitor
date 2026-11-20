@@ -80,8 +80,11 @@ const QUERY_REGIONS = [
 ];
 
 // ── Military Hex Ranges (ICAO 24-bit) ─────────────────────
+// US DoD: civil N-numbers end at ADF7C7, everything above is military.
+const US_MILITARY_HEX_RANGE = Object.freeze({ start: 'ADF7C8', end: 'AFFFFF' });
+
 const HEX_RANGES = [
-  { start: 'ADF7C8', end: 'AFFFFF', operator: 'usaf', country: 'USA' },
+  { ...US_MILITARY_HEX_RANGE, operator: 'usaf', country: 'USA' },
   { start: '400000', end: '40003F', operator: 'raf', country: 'UK' },
   { start: '43C000', end: '43CFFF', operator: 'raf', country: 'UK' },
   { start: '3AA000', end: '3AFFFF', operator: 'faf', country: 'France' },
@@ -89,7 +92,10 @@ const HEX_RANGES = [
   { start: '3EA000', end: '3EBFFF', operator: 'gaf', country: 'Germany' },
   { start: '3F4000', end: '3FBFFF', operator: 'gaf', country: 'Germany' },
   { start: '738A00', end: '738BFF', operator: 'iaf', country: 'Israel' },
-  { start: '4D0000', end: '4D03FF', operator: 'nato', country: 'NATO' },
+  // NATO E-3A Component AWACS only (LX-N90442 = 4D03C0 ... LX-N90459 = 4D03D0,
+  // hexdb.io). The rest of Luxembourg's 4D0000 block is civil: Luxair LX-LGS =
+  // 4D00C3, LX-LQJ = 4D00DA, plus Jetfly, Flying Group and Global Jet bizjets.
+  { start: '4D03C0', end: '4D03D0', operator: 'nato', country: 'NATO' },
   { start: '33FF00', end: '33FFFF', operator: 'other', country: 'Italy' },
   { start: '350000', end: '3503FF', operator: 'other', country: 'Spain' },
   { start: '480000', end: '480FFF', operator: 'other', country: 'Netherlands' },
@@ -154,7 +160,9 @@ const CALLSIGN_PATTERNS = [
   { re: /^REACH\d/i, operator: 'usaf', aircraftType: 'transport' },
   { re: /^DUKE\d/i, operator: 'usaf', aircraftType: 'transport' },
   { re: /^SAM\d{2,}/i, operator: 'usaf', aircraftType: 'vip' },
-  { re: /^AF[12]\d/i, operator: 'usaf', aircraftType: 'vip' },
+  // Air Force One / Two fly as exactly AF1 / AF2 on a US DoD hex. AF plus digits
+  // is otherwise Air France's IATA prefix (AF23M on French hex 394A0A, 2026-11-19).
+  { re: /^AF[12]$/i, operator: 'usaf', aircraftType: 'vip', requiresHexRange: US_MILITARY_HEX_RANGE },
   { re: /^EXEC\d/i, operator: 'usaf', aircraftType: 'vip' },
   { re: /^GOLD\d/i, operator: 'usaf', aircraftType: 'special_ops' },
   { re: /^KING\d/i, operator: 'usaf', aircraftType: 'tanker' },
@@ -281,7 +289,17 @@ function isKnownHex(hexCode) {
   return null;
 }
 
-function identifyByCallsign(callsign, originCountry) {
+function hexInRange(hexCode, range) {
+  const hex = String(hexCode || '').toUpperCase();
+  return /^[0-9A-F]{6}$/.test(hex) && hex >= range.start && hex <= range.end;
+}
+
+function callsignPatternMatches(pattern, callsign, hexCode) {
+  if (!pattern.re.test(callsign)) return false;
+  return !pattern.requiresHexRange || hexInRange(hexCode, pattern.requiresHexRange);
+}
+
+function identifyByCallsign(callsign, originCountry, hexCode = '') {
   const cs = callsign.toUpperCase().trim();
   const prefix3 = cs.substring(0, 3);
   if (COMMERCIAL_CALLSIGNS.has(prefix3) || COMMERCIAL_CALLSIGNS.has(cs)) return null;
@@ -292,11 +310,11 @@ function identifyByCallsign(callsign, originCountry) {
   if (preferred.length > 0) {
     for (const p of CALLSIGN_PATTERNS) {
       if (!preferred.includes(p.operator)) continue;
-      if (p.re.test(cs)) return p;
+      if (callsignPatternMatches(p, cs, hexCode)) return p;
     }
   }
   for (const p of CALLSIGN_PATTERNS) {
-    if (p.re.test(cs)) return p;
+    if (callsignPatternMatches(p, cs, hexCode)) return p;
   }
   return null;
 }
@@ -1757,7 +1775,7 @@ function filterMilitaryFlights(allStates) {
     const sourceType = detectAircraftTypeFromSourceMeta(sourceMeta);
     recordSourceCoverage(stageCounters, sourceMeta, sourceHints, sourceOperator, sourceType, callsign);
     if (callsign) stageCounters.callsignPresent += 1;
-    const csMatch = callsign ? identifyByCallsign(callsign, originCountry) : null;
+    const csMatch = callsign ? identifyByCallsign(callsign, originCountry, icao24) : null;
     const commercialMatch = callsign ? identifyCommercialCallsign(callsign) : null;
     const hexMatch = isKnownHex(icao24);
     if (csMatch) stageCounters.callsignMatched += 1;

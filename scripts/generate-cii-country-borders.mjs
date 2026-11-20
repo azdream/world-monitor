@@ -56,14 +56,17 @@ export const TIER1_NUMERIC_IDS = {
 // Territories with no CII row, by ISO2 and source id, and the Tier-1 row they count toward.
 export const ATTRIBUTED_TERRITORIES = { PS: 'IL' };
 const TERRITORY_NUMERIC_IDS = { PS: '275' };
-const RUSSIA_NUMERIC_ID = '643';
+export const RUSSIA_NUMERIC_ID = '643';
 // Every Natural Earth polygon of Russia whose bounding box lies inside this box is Crimea.
-const CRIMEA_BOX = { minLon: 32.2, maxLon: 36.8, minLat: 44.2, maxLat: 46.3 };
+export const CRIMEA_BOX = { minLon: 32.2, maxLon: 36.8, minLat: 44.2, maxLat: 46.3 };
 const FRANCE_NUMERIC_ID = '250';
 // Metropolitan France and Corsica; French polygons outside it are overseas regions.
 const METROPOLITAN_FRANCE_BOX = { minLon: -6, maxLon: 10, minLat: 41, maxLat: 52 };
 
-function decodeArcs(topology) {
+// decodeArcs, simplifyArc, geometryPolygons, polygonBox and insideBox are also
+// used by scripts/generate-firms-region-borders.mjs, so both border files share
+// one decoding and simplification.
+export function decodeArcs(topology) {
   const [sx, sy] = topology.transform.scale;
   const [tx, ty] = topology.transform.translate;
   return topology.arcs.map((arc) => {
@@ -86,7 +89,7 @@ function perpendicularDistance(p, a, b) {
   return Math.hypot(p.lon - (a.lon + t * dx), p.lat - (a.lat + t * dy));
 }
 
-function simplifyArc(points, tolerance) {
+export function simplifyArc(points, tolerance) {
   if (points.length <= 2) return points;
   const keep = new Uint8Array(points.length);
   keep[0] = 1;
@@ -117,13 +120,13 @@ function simplifyArc(points, tolerance) {
   return kept;
 }
 
-function geometryPolygons(geometry) {
+export function geometryPolygons(geometry) {
   if (geometry.type === 'Polygon') return [geometry.arcs];
   if (geometry.type === 'MultiPolygon') return geometry.arcs;
   return [];
 }
 
-function polygonBox(polygon, arcs) {
+export function polygonBox(polygon, arcs) {
   const box = { minLon: Infinity, maxLon: -Infinity, minLat: Infinity, maxLat: -Infinity };
   for (const ring of polygon) {
     for (const index of ring) {
@@ -138,7 +141,7 @@ function polygonBox(polygon, arcs) {
   return box;
 }
 
-function insideBox(inner, outer) {
+export function insideBox(inner, outer) {
   return inner.minLon >= outer.minLon && inner.maxLon <= outer.maxLon
     && inner.minLat >= outer.minLat && inner.maxLat <= outer.maxLat;
 }

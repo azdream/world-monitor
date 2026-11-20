@@ -2017,10 +2017,13 @@
       "scripts/wildfire/bc-fire-points.mjs",
       "scripts/wildfire/cwfis-wfs.mjs",
       "scripts/wildfire/firms-area.mjs",
+      "scripts/wildfire/firms-monitored-regions.mjs",
       "scripts/wildfire/source-outcome.mjs",
       "scripts/shared/cii-country-borders.data.mjs",
       "scripts/shared/cii-country-borders.mjs",
       "scripts/shared/compare-and-delete-script.cjs",
+      "scripts/shared/firms-region-borders.data.mjs",
+      "scripts/shared/firms-region-borders.mjs",
       "scripts/shared/wildfire-fires-summary.mjs"
     ],
     "cronSchedule": "*/10 * * * *",

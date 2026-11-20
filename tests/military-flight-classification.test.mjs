@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  identifyByCallsign,
   identifyCommercialCallsign,
   detectAircraftTypeFromSourceMeta,
   deriveSourceHints,
@@ -385,5 +386,47 @@ describe('military flight classification', () => {
         rawKeys: ['description', 'operator'],
       },
     ]);
+  });
+});
+
+describe('military flight classification (2026-11-19 production audit)', () => {
+  // adsb.lol carries no military flag on any of these; each was published as military.
+  const luxembourgCivil = [
+    { icao24: '4D00C3', callsign: 'LGL4MK', label: 'Luxair LX-LGS B737' },
+    { icao24: '4D00DA', callsign: 'LGL7LP', label: 'Luxair LX-LQJ DH8D' },
+    { icao24: '4D0000', callsign: 'JFA12K', label: 'Jetfly, start of the Luxembourg block' },
+    { icao24: '4D03BF', callsign: 'FYL31', label: 'Flying Group, just below the NATO E-3A block' },
+    { icao24: '4D03D1', callsign: 'SVW880', label: 'Global Jet, just above the NATO E-3A block' },
+  ];
+  for (const { icao24, callsign, label } of luxembourgCivil) {
+    it(`does not label ${label} (${icao24}) as NATO`, () => {
+      const { flights, audit } = filterMilitaryFlights([makeState({ icao24, callsign, country: 'Luxembourg', lon: 6.2, lat: 49.6 })]);
+      assert.deepEqual(flights, []);
+      assert.equal(audit.rejectedByReason.no_military_signal, 1);
+    });
+  }
+
+  for (const icao24 of ['4D03C0', '4D03C8', '4D03D0']) {
+    it(`keeps the NATO E-3A hex ${icao24} as a trusted NATO match`, () => {
+      const { flights } = filterMilitaryFlights([makeState({ icao24, callsign: '', country: 'Luxembourg', lon: 6.0, lat: 50.9 })]);
+      assert.equal(flights.length, 1);
+      assert.equal(flights[0].operator, 'nato');
+      assert.equal(flights[0].admissionReason, 'hex_trusted');
+    });
+  }
+
+  it('does not read Air France AF23M on a French hex as Air Force Two', () => {
+    const { flights } = filterMilitaryFlights([makeState({ icao24: '394A0A', callsign: 'AF23M', country: 'France', lon: -30.1, lat: 47.2 })]);
+    assert.deepEqual(flights, []);
+    assert.equal(identifyByCallsign('AF23M', 'France', '394A0A'), null);
+    assert.equal(identifyByCallsign('AF1', 'France', '394A0A'), null);
+  });
+
+  it('still recognises Air Force One on a US DoD hex', () => {
+    const { flights } = filterMilitaryFlights([makeState({ icao24: 'ADFDF8', callsign: 'AF1', country: 'United States', lon: -77.0, lat: 38.8 })]);
+    assert.equal(flights.length, 1);
+    assert.equal(flights[0].operator, 'usaf');
+    assert.equal(flights[0].aircraftType, 'vip');
+    assert.equal(flights[0].admissionReason, 'callsign_plus_hex');
   });
 });

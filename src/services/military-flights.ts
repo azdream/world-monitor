@@ -270,7 +270,7 @@ interface OpenSkyResponse {
 function determineAircraftInfo(
   callsign: string, icao24: string, originCountry?: string,
 ): { type: MilitaryAircraftType; operator: MilitaryOperator; country: string; confidence: 'high' | 'medium' | 'low' } {
-  const csMatch = identifyByCallsign(callsign, originCountry);
+  const csMatch = identifyByCallsign(callsign, originCountry, icao24);
   if (csMatch) {
     const countryMap: Record<MilitaryOperator, string> = {
       usaf: 'USA', usn: 'USA', usmc: 'USA', usa: 'USA',
@@ -294,7 +294,7 @@ function determineAircraftInfo(
 
 function isMilitaryFlight(state: OpenSkyStateArray): boolean {
   const callsign = (state[1] || '').trim();
-  if (callsign && identifyByCallsign(callsign, state[2])) return true;
+  if (callsign && identifyByCallsign(callsign, state[2], state[0])) return true;
   if (isKnownMilitaryHex(state[0])) return true;
   return false;
 }

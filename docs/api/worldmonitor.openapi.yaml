@@ -66614,7 +66614,12 @@ components:
                     description: 'Time the fire was detected, as Unix epoch milliseconds.. Warning: Values > 2^53 may lose precision in JavaScript'
                 region:
                     type: string
-                    description: Monitored region name (e.g., "Ukraine", "Russia", "Iran").
+                    description: |-
+                        Where the detection is. A NASA FIRMS detection carries its monitored region's
+                         name (e.g., "Ukraine", "Iran", "Israel/Gaza") when it lies in that region's
+                         country, and otherwise the name of the country it lies in (e.g., "Iraq"),
+                         because the monitored query areas overlap. Canadian agency detections carry
+                         their province (e.g., "British Columbia").
                 dayNight:
                     type: string
                     description: Day or night detection ("D" or "N").

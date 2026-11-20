@@ -22,6 +22,8 @@ import { MAX_PAYLOAD_BYTES, runSeed } from '../scripts/_seed-utils.mjs';
 import { buildEnvelope, unwrapEnvelope } from '../scripts/_seed-envelope-source.mjs';
 import type { FireDetection } from '../src/generated/server/worldmonitor/wildfire/v1/service_server';
 import { withSeedLockFence } from './helpers/seed-lock-fence.mjs';
+import FIRMS_REGION_BORDERS from '../scripts/shared/firms-region-borders.data.mjs';
+import { MONITORED_REGIONS } from '../scripts/wildfire/firms-monitored-regions.mjs';
 
 const REGIONS = ['Ukraine', 'Russia', 'Iran', 'Israel/Gaza', 'Syria', 'Taiwan', 'North Korea', 'Saudi Arabia', 'Turkey'];
 const SATELLITES = ['VIIRS_SNPP_NRT', 'VIIRS_NOAA20_NRT', 'VIIRS_NOAA21_NRT'];
@@ -326,10 +328,17 @@ function firmsDetection(index: number): FireDetection {
   };
 }
 
+// The longest label a FIRMS detection can carry: a monitored region's name, or the name of
+// any country in the border file firmsDetectionRegion() labels a detection with.
+const LONGEST_FIRMS_REGION_LABEL = [
+  ...Object.keys(MONITORED_REGIONS),
+  ...Object.values(FIRMS_REGION_BORDERS.names as Record<string, string>),
+].reduce((longest, label) => (Buffer.byteLength(label) > Buffer.byteLength(longest) ? label : longest), '');
+
 /**
  * The widest detection MONITORED_REGIONS can actually produce: Russia's bbox reaches 180E/82N
- * (longest coordinate strings), 'Saudi Arabia' is the longest region name, and a FIRMS
- * confidence code outside h/n/l maps to the longest enum member.
+ * (longest coordinate strings), LONGEST_FIRMS_REGION_LABEL is the longest region label, and a
+ * FIRMS confidence code outside h/n/l maps to the longest enum member.
  */
 function widestFirmsDetection(index: number): FireDetection {
   const latitude = Math.round((81.99999 - (index % 1000) / 1e5) * 1e5) / 1e5;
@@ -342,7 +351,7 @@ function widestFirmsDetection(index: number): FireDetection {
     confidence: 'FIRE_CONFIDENCE_UNSPECIFIED',
     satellite: 'N21',
     detectedAt: 1_785_416_460_000 + index * 1000,
-    region: 'Saudi Arabia',
+    region: LONGEST_FIRMS_REGION_LABEL,
     dayNight: 'N',
     possibleExplosion: true,
   };
